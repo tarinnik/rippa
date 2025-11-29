@@ -3,6 +3,7 @@ use anyhow::Result;
 use tokio::net::TcpListener;
 
 mod error;
+mod makemkv;
 mod routes;
 mod state;
 mod templates;
