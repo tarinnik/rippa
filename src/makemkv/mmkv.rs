@@ -1,11 +1,15 @@
+use std::time::Duration;
+
 use crate::{
     error::RippaError,
     makemkv::command::{MakeMkvCommand, MakeMkvHeader},
 };
 use anyhow::{Context, anyhow, bail, ensure};
+use log::debug;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::Child,
+    time::timeout,
 };
 use zerocopy::FromBytes;
 
@@ -24,12 +28,9 @@ impl MakeMkv {
         Ok(())
     }
 
-    async fn transact(&mut self, cmd: MakeMkvCommand) -> anyhow::Result<()> {
-        ensure!(self.mmkv.is_some(), "MakeMKV not initialised");
-
+    async fn transact(&mut self, cmd: MakeMkvCommand) -> anyhow::Result<MakeMkvCommand> {
         self.send_command(cmd).await?;
-
-        Ok(())
+        self.receive_response().await
     }
 
     /// Send a command to MakeMKV
@@ -72,10 +73,30 @@ impl MakeMkv {
                 "Received invalid command: {}",
                 cmd_num
             );
-            cmd = cmd_num.try_into()?;
+            cmd = (cmd_num - MAGIC_CMD_NUMBER).try_into()?;
+            data_size = 0;
+            arg_len = 0;
         } else {
             bail!("{} is not a valid header length", n);
         }
+
+        debug!("Received cmd: {:?}", cmd);
+
+        let mut args: Vec<u32> = Vec::with_capacity(arg_len as usize);
+        for _ in 0..arg_len {
+            let mut buf = [0_u8; 4];
+            timeout(Duration::from_secs(1), stdout.read_exact(&mut buf))
+                .await
+                .context("Timeout waiting for message")?
+                .context("Unable to read arg bytes from mmkv")?;
+            args.push(u32::from_le_bytes(buf));
+        }
+
+        let mut data_buf = Vec::with_capacity(data_size as usize);
+        timeout(Duration::from_secs(1), stdout.read(&mut data_buf))
+            .await
+            .context("Timeout waiting for data")?
+            .context("Unable to read data bytes from mmkv")?;
 
         Err(anyhow!("not implemented"))
     }

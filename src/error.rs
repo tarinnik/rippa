@@ -5,7 +5,7 @@ use axum::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum RippaError {
-    #[error("Unable to render template")]
+    #[error("Unable to render template: {0}")]
     Render(#[from] askama::Error),
     #[error("Error occurred using MakeMKV: {0}")]
     MakeMkv(String),
