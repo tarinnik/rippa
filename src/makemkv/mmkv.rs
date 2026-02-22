@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use crate::{
     error::RippaError,
-    makemkv::command::{MakeMkvCommand, MakeMkvHeader},
+    makemkv::{
+        command::{MakeMkvCommand, MakeMkvHeader},
+        drive::DriveInfo,
+    },
 };
 use anyhow::{Context, anyhow, bail, ensure};
 use log::debug;
@@ -17,11 +20,15 @@ const MAGIC_CMD_NUMBER: u8 = 0xf0;
 
 pub struct MakeMkv {
     mmkv: Option<Child>,
+    drive: Option<DriveInfo>,
 }
 
 impl MakeMkv {
     pub fn new() -> Self {
-        Self { mmkv: None }
+        Self {
+            mmkv: None,
+            drive: None,
+        }
     }
 
     pub fn init(&mut self) -> Result<(), RippaError> {
@@ -101,7 +108,12 @@ impl MakeMkv {
 
         match cmd {
             MakeMkvCommand::Noop => {}
-            MakeMkvCommand::BackUpdateDrive => {}
+            MakeMkvCommand::BackUpdateDrive => {
+                let drive = DriveInfo::try_from_update(&args, data);
+                if let Some(d) = drive {
+                    self.drive = Some(d);
+                }
+            }
             _ => {}
         }
 
