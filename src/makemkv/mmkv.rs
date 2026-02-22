@@ -93,10 +93,17 @@ impl MakeMkv {
         }
 
         let mut data_buf = Vec::with_capacity(data_size as usize);
-        timeout(Duration::from_secs(1), stdout.read(&mut data_buf))
+        let n = timeout(Duration::from_secs(1), stdout.read(&mut data_buf))
             .await
             .context("Timeout waiting for data")?
             .context("Unable to read data bytes from mmkv")?;
+        let data = &data_buf[..n];
+
+        match cmd {
+            MakeMkvCommand::Noop => {}
+            MakeMkvCommand::BackUpdateDrive => {}
+            _ => {}
+        }
 
         Err(anyhow!("not implemented"))
     }

@@ -4,7 +4,7 @@ use zerocopy::{FromBytes, KnownLayout, byteorder::little_endian::U16};
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum MakeMkvCommand {
-    Nop = 0,
+    Noop = 0,
     Return = 1,
     ClientDone = 2,
     CallSignalExit = 3,
@@ -63,7 +63,7 @@ impl TryFrom<u8> for MakeMkvCommand {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(Self::Nop),
+            0 => Ok(Self::Noop),
             1 => Ok(Self::Return),
             2 => Ok(Self::ClientDone),
             3 => Ok(Self::CallSignalExit),
@@ -115,7 +115,7 @@ impl TryFrom<u8> for MakeMkvCommand {
             225 => Ok(Self::BackOutOfMem),
             239 => Ok(Self::Unknown),
             _ => Err(RippaError::InvalidMmkvCommand(format!(
-                "{} is not valid",
+                "{} is not a valid command",
                 value
             ))),
         }
