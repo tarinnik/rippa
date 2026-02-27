@@ -50,7 +50,7 @@ impl MakeMkv {
     async fn transact(
         &mut self,
         cmd: MakeMkvCommand,
-        args: Option<Vec<u8>>,
+        args: Option<Vec<u32>>,
         data: Option<Vec<u8>>,
     ) -> anyhow::Result<AbiResponse> {
         self.send_command(cmd, args, data).await?;
@@ -61,7 +61,7 @@ impl MakeMkv {
     async fn send_command(
         &mut self,
         cmd: MakeMkvCommand,
-        args: Option<Vec<u8>>,
+        args: Option<Vec<u32>>,
         data: Option<Vec<u8>>,
     ) -> anyhow::Result<()> {
         ensure!(self.mmkv.is_some(), "MakeMKV not initialised");
@@ -74,7 +74,12 @@ impl MakeMkv {
         let mut buf = Vec::new();
 
         let mut data = data.unwrap_or_else(|| Vec::new());
-        let mut args = args.unwrap_or_else(|| Vec::new());
+        let mut args: Vec<u8> = args
+            .unwrap_or_else(|| Vec::new())
+            .into_iter()
+            .map(|x| x.to_le_bytes().to_vec())
+            .flatten()
+            .collect();
 
         let mut header = MakeMkvHeader::new(data.len() as u16, (args.len() / 4) as u8, cmd)
             .as_bytes()
