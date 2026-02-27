@@ -129,3 +129,15 @@ pub struct MakeMkvHeader {
     pub arg_len: u8,
     pub cmd: u8,
 }
+
+pub struct AbiResponse {
+    pub cmd: MakeMkvCommand,
+    pub args: Vec<u32>,
+    pub data: Vec<u8>,
+}
+
+impl AbiResponse {
+    pub fn new(cmd: MakeMkvCommand, args: Vec<u32>, data: Vec<u8>) -> Self {
+        Self { cmd, args, data }
+    }
+}

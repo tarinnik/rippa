@@ -1,3 +1,5 @@
+#![forbid(clippy::unwrap_used)]
+
 use crate::routes::get_router;
 use anyhow::Result;
 use tokio::net::TcpListener;

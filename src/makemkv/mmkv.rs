@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{
     error::RippaError,
     makemkv::{
-        command::{MakeMkvCommand, MakeMkvHeader},
+        command::{AbiResponse, MakeMkvCommand, MakeMkvHeader},
         drive::DriveInfo,
         title::TitleList,
         util::u32s_to_u64,
@@ -24,6 +24,10 @@ pub struct MakeMkv {
     mmkv: Option<Child>,
     drive: Option<DriveInfo>,
     titles: Option<TitleList>,
+    current_info: Vec<Option<String>>,
+    current_bar: u32,
+    total_bar: u32,
+    job_mode: bool,
 }
 
 impl MakeMkv {
@@ -32,6 +36,10 @@ impl MakeMkv {
             mmkv: None,
             drive: None,
             titles: None,
+            current_info: vec![None; 10],
+            current_bar: 0,
+            total_bar: 0,
+            job_mode: false,
         }
     }
 
@@ -39,7 +47,11 @@ impl MakeMkv {
         Ok(())
     }
 
-    async fn transact(&mut self, cmd: MakeMkvCommand) -> anyhow::Result<MakeMkvCommand> {
+    async fn transact(
+        &mut self,
+        cmd: MakeMkvCommand,
+        args: Vec<u8>,
+    ) -> anyhow::Result<AbiResponse> {
         self.send_command(cmd).await?;
         self.receive_response().await
     }
@@ -57,13 +69,10 @@ impl MakeMkv {
     }
 
     /// Receive a message from MakeMKV
-    async fn receive_response(&mut self) -> anyhow::Result<MakeMkvCommand> {
+    async fn receive_response(&mut self) -> anyhow::Result<AbiResponse> {
         ensure!(self.mmkv.is_some(), "MakeMKV not initialised");
         let mmkv = self.mmkv.as_mut().unwrap();
-        let stdout = mmkv
-            .stdout
-            .as_mut()
-            .ok_or_else(|| anyhow!("MakeMKV stdout is None"))?;
+        let stdout = mmkv.stdout.as_mut().context("MakeMKV stdout is None")?;
 
         loop {
             let mut buf = [0_u8; 4];
@@ -140,6 +149,46 @@ impl MakeMkv {
                         args[4],
                         args[3],
                     );
+                }
+                MakeMkvCommand::BackSetTrackInfo => {
+                    if args.len() != 4 {
+                        continue;
+                    }
+                    let handle = u32s_to_u64(args[3], args[2]);
+                    if let Some(title_list) = &mut self.titles {
+                        title_list.add_track(args[0], args[1], handle);
+                    }
+                }
+                MakeMkvCommand::BackSetChapterInfo => {
+                    if args.len() != 4 {
+                        continue;
+                    }
+                    let handle = u32s_to_u64(args[3], args[2]);
+                    if let Some(title_list) = &mut self.titles {
+                        title_list.add_chapter(args[0], args[1], handle);
+                    }
+                }
+                MakeMkvCommand::BackUpdateCurrentInfo => {
+                    // TODO: Handle more cases
+                    if args.len() > 0 && args[0] < 10 {
+                        self.current_info[args[0] as usize] =
+                            Some(String::from_utf8_lossy(&data).to_string());
+                    }
+                }
+                MakeMkvCommand::BackEnterJobMode => self.job_mode = true,
+                MakeMkvCommand::BackLeaveJobMode => self.job_mode = false,
+                MakeMkvCommand::BackUpdateCurrentBar => {
+                    if args.len() > 0 {
+                        self.current_bar = args[0];
+                    }
+                }
+                MakeMkvCommand::BackUpdateTotalBar => {
+                    if args.len() > 0 {
+                        self.total_bar = args[0];
+                    }
+                }
+                MakeMkvCommand::Return => {
+                    return Ok(AbiResponse::new(cmd, args, data.to_vec()));
                 }
                 _ => {}
             }
