@@ -16,7 +16,7 @@ use tokio::{
     process::Child,
     time::timeout,
 };
-use zerocopy::FromBytes;
+use zerocopy::{FromBytes, IntoBytes};
 
 const MAGIC_CMD_NUMBER: u8 = 0xf0;
 
@@ -50,20 +50,45 @@ impl MakeMkv {
     async fn transact(
         &mut self,
         cmd: MakeMkvCommand,
-        args: Vec<u8>,
+        args: Option<Vec<u8>>,
+        data: Option<Vec<u8>>,
     ) -> anyhow::Result<AbiResponse> {
-        self.send_command(cmd).await?;
+        self.send_command(cmd, args, data).await?;
         self.receive_response().await
     }
 
     /// Send a command to MakeMKV
-    async fn send_command(&mut self, cmd: MakeMkvCommand) -> anyhow::Result<()> {
+    async fn send_command(
+        &mut self,
+        cmd: MakeMkvCommand,
+        args: Option<Vec<u8>>,
+        data: Option<Vec<u8>>,
+    ) -> anyhow::Result<()> {
         ensure!(self.mmkv.is_some(), "MakeMKV not initialised");
         let mmkv = self.mmkv.as_mut().unwrap();
         let stdin = mmkv
             .stdin
             .as_mut()
             .ok_or_else(|| anyhow!("MakeMKV stdin is None"))?;
+
+        let mut buf = Vec::new();
+
+        let mut data = data.unwrap_or_else(|| Vec::new());
+        let mut args = args.unwrap_or_else(|| Vec::new());
+
+        let mut header = MakeMkvHeader::new(data.len() as u16, (args.len() / 4) as u8, cmd)
+            .as_bytes()
+            .to_vec();
+
+        buf.append(&mut header);
+        buf.append(&mut args);
+        buf.append(&mut data);
+
+        debug!("Sending message: {:?}", &buf);
+        stdin
+            .write_all(&buf)
+            .await
+            .context("Unable to write to makemkv")?;
 
         Ok(())
     }

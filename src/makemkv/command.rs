@@ -1,5 +1,5 @@
 use crate::error::RippaError;
-use zerocopy::{FromBytes, KnownLayout, byteorder::little_endian::U16};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, byteorder::little_endian::U16};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -122,12 +122,22 @@ impl TryFrom<u8> for MakeMkvCommand {
     }
 }
 
-#[derive(FromBytes, KnownLayout)]
+#[derive(FromBytes, IntoBytes, Immutable, KnownLayout)]
 #[repr(C)]
 pub struct MakeMkvHeader {
     pub data_size: U16,
     pub arg_len: u8,
     pub cmd: u8,
+}
+
+impl MakeMkvHeader {
+    pub fn new(data_size: u16, arg_len: u8, cmd: MakeMkvCommand) -> Self {
+        Self {
+            data_size: data_size.into(),
+            arg_len,
+            cmd: cmd as u8,
+        }
+    }
 }
 
 pub struct AbiResponse {
