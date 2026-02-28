@@ -36,3 +36,9 @@ impl From<Elapsed> for RippaError {
         Self::MakeMkv(String::from("Timeout receiving data"))
     }
 }
+
+impl From<anyhow::Error> for RippaError {
+    fn from(value: anyhow::Error) -> Self {
+        Self::MakeMkv(format!("{:#}", value))
+    }
+}

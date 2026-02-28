@@ -90,6 +90,30 @@ impl MakeMkv {
         Ok(())
     }
 
+    pub async fn idle(&mut self) -> Result<(), RippaError> {
+        self.transact(MakeMkvCommand::CallOnIdle, None, None)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn update_available_drives(&mut self, flags: Option<u32>) -> Result<(), RippaError> {
+        let args = flags.unwrap_or(0);
+        self.transact(
+            MakeMkvCommand::CallUpdateAvailableDrives,
+            Some(vec![args]),
+            None,
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn open_disk(&mut self, index: u32, flags: Option<u32>) -> Result<(), RippaError> {
+        let flags = flags.unwrap_or(0);
+        self.transact(MakeMkvCommand::CallOpenDisk, Some(vec![index, flags]), None)
+            .await?;
+        Ok(())
+    }
+
     async fn transact(
         &mut self,
         cmd: MakeMkvCommand,
@@ -265,6 +289,9 @@ impl MakeMkv {
                 }
                 _ => {}
             }
+
+            // self.send_command(MakeMkvCommand::ClientDone, None, None)
+            //     .await?;
         }
     }
 }
