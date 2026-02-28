@@ -2,6 +2,8 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use std::io;
+use tokio::time::error::Elapsed;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RippaError {
@@ -20,5 +22,17 @@ impl IntoResponse for RippaError {
             Self::MakeMkv(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             Self::InvalidMmkvCommand(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
+    }
+}
+
+impl From<io::Error> for RippaError {
+    fn from(value: io::Error) -> Self {
+        Self::MakeMkv(format!("IO Error: {}", value))
+    }
+}
+
+impl From<Elapsed> for RippaError {
+    fn from(_value: Elapsed) -> Self {
+        Self::MakeMkv(String::from("Timeout receiving data"))
     }
 }

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{io, process::Stdio, time::Duration};
 
 use crate::{
     error::RippaError,
@@ -13,12 +13,15 @@ use anyhow::{Context, anyhow, bail, ensure};
 use log::debug;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    process::Child,
+    process::{Child, Command},
     time::timeout,
 };
 use zerocopy::{FromBytes, IntoBytes};
 
 const MAGIC_CMD_NUMBER: u8 = 0xf0;
+const PROGRAM_NAME: &str = "makemkvcon";
+const ABI_VERSION: &str = "A0001";
+const TRANSPORT: &str = "std"; // pipe transport
 
 pub struct MakeMkv {
     mmkv: Option<Child>,
@@ -43,7 +46,47 @@ impl MakeMkv {
         }
     }
 
-    pub fn init(&mut self) -> Result<(), RippaError> {
+    /// Spawns the makemkv process
+    pub async fn init(&mut self) -> Result<(), RippaError> {
+        let mut mmkv = Command::new(PROGRAM_NAME)
+            .arg("guiserver")
+            .arg(format!("{}+{}", ABI_VERSION, TRANSPORT))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        let stdin = mmkv
+            .stdin
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "no stdin pipe connected"))?;
+
+        let stdout = mmkv
+            .stdout
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "no stdout pipe connected"))?;
+
+        // Check the ABI version matches
+        let mut buf = [0_u8; ABI_VERSION.len()];
+        timeout(Duration::from_secs(1), stdout.read_exact(&mut buf)).await??;
+        let abi_version = String::from_utf8_lossy(&buf);
+
+        if abi_version != ABI_VERSION {
+            return Err(RippaError::MakeMkv(format!(
+                "ABI version mismatch, received: {}, expected: {}",
+                abi_version, ABI_VERSION,
+            )));
+        }
+
+        let mut buf = [0_u8; 4];
+        while buf[3] != 0xAA {
+            timeout(Duration::from_secs(1), stdout.read_exact(&mut buf)).await??;
+        }
+
+        stdin.write_u8(0xBB).await?;
+
+        self.mmkv = Some(mmkv);
+
         Ok(())
     }
 
