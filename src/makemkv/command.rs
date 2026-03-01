@@ -2,7 +2,6 @@ use crate::error::RippaError;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, byteorder::little_endian::U16};
 
 #[derive(Copy, Clone, Debug)]
-#[repr(u8)]
 pub enum MakeMkvCommand {
     Noop = 0,
     Return = 1,
@@ -150,4 +149,89 @@ impl AbiResponse {
     pub fn new(cmd: MakeMkvCommand, args: Vec<u32>, data: Vec<u8>) -> Self {
         Self { cmd, args, data }
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum AppString {
+    Name = 0,
+    Version = 1,
+    Platform = 2,
+    Build = 3,
+    KeyType = 4,
+    KeyFeatures = 5,
+    KeyExpiration = 6,
+    EvalState = 7,
+    ProgExpiration = 8,
+    LatestVersion = 9,
+    RestartRequired = 10,
+    ExpertMode = 11,
+    ProfileCount = 12,
+    ProgExpired = 13,
+    OutputFolderName = 14,
+    OutputBaseName = 15,
+    CurrentProfile = 16,
+    OpenFileFilter = 17,
+    WebSiteURL = 18,
+    OpenDVDFileFilter = 19,
+    DefaultSelectionString = 20,
+    DefaultOutputFileName = 21,
+    ExternalAppItem = 22,
+    InterfaceLanguage = 23,
+    ProfileString = 24,
+    KeyString = 25,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ItemAttribute {
+    Unknown = 0,
+    Type = 1,
+    Name = 2,
+    LangCode = 3,
+    LangName = 4,
+    CodecId = 5,
+    CodecShort = 6,
+    CodecLong = 7,
+    ChapterCount = 8,
+    Duration = 9,
+    DiskSize = 10,
+    DiskSizeBytes = 11,
+    StreamTypeExtension = 12,
+    Bitrate = 13,
+    AudioChannelsCount = 14,
+    AngleInfo = 15,
+    SourceFileName = 16,
+    AudioSampleRate = 17,
+    AudioSampleSize = 18,
+    VideoSize = 19,
+    VideoAspectRatio = 20,
+    VideoFrameRate = 21,
+    StreamFlags = 22,
+    DateTime = 23,
+    OriginalTitleId = 24,
+    SegmentsCount = 25,
+    SegmentsMap = 26,
+    OutputFileName = 27,
+    MetadataLanguageCode = 28,
+    MetadataLanguageName = 29,
+    TreeInfo = 30,
+    PanelTitle = 31,
+    VolumeName = 32,
+    OrderWeight = 33,
+    OutputFormat = 34,
+    OutputFormatDescription = 35,
+    SeamlessInfo = 36,
+    PanelText = 37,
+    MkvFlags = 38,
+    MkvFlagsText = 39,
+    AudioChannelLayoutName = 40,
+    OutputCodecShort = 41,
+    OutputConversionType = 42,
+    OutputAudioSampleRate = 43,
+    OutputAudioSampleSize = 44,
+    OutputAudioChannelsCount = 45,
+    OutputAudioChannelLayoutName = 46,
+    OutputAudioChannelLayout = 47,
+    OutputAudioMixDescription = 48,
+    Comment = 49,
+    OffsetSequenceId = 50,
 }

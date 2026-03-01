@@ -1,16 +1,15 @@
-use std::{io, process::Stdio, time::Duration};
-
 use crate::{
     error::RippaError,
     makemkv::{
-        command::{AbiResponse, MakeMkvCommand, MakeMkvHeader},
+        command::{AbiResponse, AppString, MakeMkvCommand, MakeMkvHeader},
         drive::DriveInfo,
         title::TitleList,
-        util::u32s_to_u64,
+        util::{u32s_to_u64, u64_to_le_u32},
     },
 };
 use anyhow::{Context, anyhow, bail, ensure};
 use log::debug;
+use std::{io, process::Stdio, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::{Child, Command},
@@ -107,9 +106,60 @@ impl MakeMkv {
         Ok(())
     }
 
+    pub async fn get_app_string(
+        &mut self,
+        key: AppString,
+        index1: Option<u32>,
+        index2: Option<u32>,
+    ) -> Result<String, RippaError> {
+        let args = vec![key as u32, index1.unwrap_or(0), index2.unwrap_or(0)];
+        let response = self
+            .transact(MakeMkvCommand::CallAppGetString, Some(args), None)
+            .await?;
+
+        let data = String::from_utf8_lossy(&response.data);
+
+        Ok(data.to_string())
+    }
+
     pub async fn open_disk(&mut self, index: u32, flags: Option<u32>) -> Result<(), RippaError> {
         let flags = flags.unwrap_or(0);
         self.transact(MakeMkvCommand::CallOpenDisk, Some(vec![index, flags]), None)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_item_state(&mut self, handle: u64) -> Result<u32, RippaError> {
+        let args = u64_to_le_u32(handle).to_vec();
+        let response = self
+            .transact(MakeMkvCommand::CallGetUiItemState, Some(args), None)
+            .await?;
+
+        if response.args.len() != 0 {
+            Ok(response.args[0])
+        } else {
+            Err(RippaError::MakeMkv("No arg received in response".into()))
+        }
+    }
+
+    pub async fn set_item_state(&mut self, handle: u64, state: u32) -> Result<(), RippaError> {
+        let mut args = u64_to_le_u32(handle).to_vec();
+        args.push(state);
+        self.transact(MakeMkvCommand::CallSetUiItemState, Some(args), None)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_output_folder(&mut self, folder: &str) -> Result<(), RippaError> {
+        let mut data = folder.as_bytes().to_vec();
+        data.push(0);
+        self.transact(MakeMkvCommand::CallSetOutputFolder, None, Some(data))
+            .await?;
+        Ok(())
+    }
+
+    pub async fn rip_all_selected(&mut self) -> Result<(), RippaError> {
+        self.transact(MakeMkvCommand::CallSaveAllSelectedTitlesToMkv, None, None)
             .await?;
         Ok(())
     }
