@@ -1,4 +1,4 @@
-use crate::error::RippaError;
+use crate::error::MakeMkvError;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, byteorder::little_endian::U16};
 
 #[derive(Copy, Clone, Debug)]
@@ -58,7 +58,7 @@ pub enum MakeMkvCommand {
 }
 
 impl TryFrom<u8> for MakeMkvCommand {
-    type Error = RippaError;
+    type Error = MakeMkvError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
@@ -113,7 +113,7 @@ impl TryFrom<u8> for MakeMkvCommand {
             224 => Ok(Self::BackFatalCommError),
             225 => Ok(Self::BackOutOfMem),
             239 => Ok(Self::Unknown),
-            _ => Err(RippaError::InvalidMmkvCommand(format!(
+            _ => Err(MakeMkvError::InvalidCommand(format!(
                 "{} is not a valid command",
                 value
             ))),

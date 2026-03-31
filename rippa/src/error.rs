@@ -24,21 +24,3 @@ impl IntoResponse for RippaError {
         }
     }
 }
-
-impl From<io::Error> for RippaError {
-    fn from(value: io::Error) -> Self {
-        Self::MakeMkv(format!("IO Error: {}", value))
-    }
-}
-
-impl From<Elapsed> for RippaError {
-    fn from(_value: Elapsed) -> Self {
-        Self::MakeMkv(String::from("Timeout receiving data"))
-    }
-}
-
-impl From<anyhow::Error> for RippaError {
-    fn from(value: anyhow::Error) -> Self {
-        Self::MakeMkv(format!("{:#}", value))
-    }
-}

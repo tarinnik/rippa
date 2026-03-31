@@ -1,4 +1,4 @@
-use crate::error::RippaError;
+use crate::error::MakeMkvError;
 
 #[derive(Debug, Default)]
 pub struct DriveInfo {
@@ -110,7 +110,7 @@ pub enum DriveState {
 }
 
 impl TryFrom<u32> for DriveState {
-    type Error = RippaError;
+    type Error = MakeMkvError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
@@ -120,7 +120,7 @@ impl TryFrom<u32> for DriveState {
             3 => Ok(Self::Loaded),
             256 => Ok(Self::NoDrive),
             257 => Ok(Self::Unmounting),
-            _ => Err(RippaError::InvalidMmkvCommand(format!(
+            _ => Err(MakeMkvError::InvalidCommand(format!(
                 "{} is not a valid drive state",
                 value
             ))),
