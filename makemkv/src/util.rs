@@ -5,3 +5,10 @@ pub fn u32s_to_u64(high: u32, low: u32) -> u64 {
 pub fn u64_to_le_u32(value: u64) -> [u32; 2] {
     [(value & 0xFFFFFF) as u32, ((value >> 32) & 0xFFFFFF) as u32]
 }
+
+/// Converts a slice into const sized array
+///
+/// This WILL panic if the slice doesn't contain at least 4 values
+pub fn u32_const_slice(slice: &[u8]) -> [u8; 4] {
+    [slice[0], slice[1], slice[2], slice[3]]
+}

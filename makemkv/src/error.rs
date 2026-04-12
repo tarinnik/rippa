@@ -7,6 +7,8 @@ pub enum MakeMkvError {
     MakeMkv(String),
     #[error("Invalid MakeMKV command received: {0}")]
     InvalidCommand(String),
+    #[error("Invalid MakeMKV response: {0}")]
+    InvalidResponse(String),
 }
 
 impl From<io::Error> for MakeMkvError {

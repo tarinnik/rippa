@@ -2,12 +2,19 @@ use crate::{
     command::{AbiResponse, AppString, MakeMkvCommand, MakeMkvHeader},
     drive::DriveInfo,
     error::MakeMkvError,
+    item_attribute::ItemAttribute,
+    language_data::LanguageData,
     title::TitleList,
     util::{u32s_to_u64, u64_to_le_u32},
 };
 use anyhow::{Context, anyhow, bail, ensure};
+use flate2::bufread::ZlibDecoder;
 use log::debug;
-use std::{io, process::Stdio, time::Duration};
+use std::{
+    io::{self, Read},
+    process::Stdio,
+    time::Duration,
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::{Child, Command},
@@ -19,11 +26,13 @@ const MAGIC_CMD_NUMBER: u8 = 0xf0;
 const PROGRAM_NAME: &str = "makemkvcon";
 const ABI_VERSION: &str = "A0001";
 const TRANSPORT: &str = "std"; // pipe transport
+const AP_APP_LOC_MAX: u32 = 7000;
 
 pub struct MakeMkv {
     mmkv: Option<Child>,
     drive: Option<DriveInfo>,
     titles: Option<TitleList>,
+    language_data: Option<LanguageData>,
     current_info: Vec<Option<String>>,
     current_bar: u32,
     total_bar: u32,
@@ -36,6 +45,7 @@ impl MakeMkv {
             mmkv: None,
             drive: None,
             titles: None,
+            language_data: None,
             current_info: vec![None; 10],
             current_bar: 0,
             total_bar: 0,
@@ -81,6 +91,7 @@ impl MakeMkv {
         }
 
         stdin.write_u8(0xBB).await?;
+        stdin.flush().await?;
 
         self.mmkv = Some(mmkv);
 
@@ -130,13 +141,83 @@ impl MakeMkv {
         Ok(())
     }
 
+    pub async fn load_interface_language_data(&mut self) -> Result<(), MakeMkvError> {
+        let result = self
+            .transact(
+                MakeMkvCommand::CallGetInterfaceLanguageData,
+                Some(vec![AP_APP_LOC_MAX]),
+                None,
+            )
+            .await?;
+
+        if result.args.len() < 2 {
+            return Err(MakeMkvError::InvalidResponse(
+                "Load language interface returned less than two args".into(),
+            ));
+        }
+        let unpacked_size = result.args[0];
+        let packed_size = result.args[1];
+        if packed_size as usize != result.data.len() {
+            return Err(MakeMkvError::InvalidResponse(
+                "Returned data size does not match expected data size".into(),
+            ));
+        }
+
+        let mut unpacked_data = Vec::with_capacity(unpacked_size as usize);
+        let mut decompresser = ZlibDecoder::new(&result.data[..]);
+        let n = decompresser.read_to_end(&mut unpacked_data)?;
+
+        if n != unpacked_size as usize {
+            return Err(MakeMkvError::InvalidResponse(
+                "Decompressed data size does not match expected data size".into(),
+            ));
+        }
+
+        self.language_data = Some(LanguageData::new(&unpacked_data[..n]));
+
+        Ok(())
+    }
+
+    pub async fn get_ui_item_info(
+        &mut self,
+        handle: u64,
+        item_attribute: ItemAttribute,
+    ) -> Result<Option<String>, MakeMkvError> {
+        let mut args = u64_to_le_u32(handle).to_vec();
+        args.push(item_attribute as u32);
+
+        let result = self
+            .transact(MakeMkvCommand::CallGetUiItemInfo, Some(args), None)
+            .await?;
+
+        if result.args.is_empty() {
+            return Err(MakeMkvError::InvalidResponse("Args is empty".into()));
+        }
+
+        if result.args[0] != 0
+            && let Some(language_data) = &self.language_data
+        {
+            return Ok(language_data.get(result.args[0]));
+        }
+
+        if result.args.len() > 1 && result.args[1] != 0 {
+            return Ok(Some(
+                String::from_utf8_lossy(&result.data[..result.data.len() - 1]).to_string(),
+            ));
+        }
+
+        Err(MakeMkvError::InvalidResponse(
+            "Invalid get item info response, no data".into(),
+        ))
+    }
+
     pub async fn get_item_state(&mut self, handle: u64) -> Result<u32, MakeMkvError> {
         let args = u64_to_le_u32(handle).to_vec();
         let response = self
             .transact(MakeMkvCommand::CallGetUiItemState, Some(args), None)
             .await?;
 
-        if response.args.len() != 0 {
+        if !response.args.is_empty() {
             Ok(response.args[0])
         } else {
             Err(MakeMkvError::MakeMkv("No arg received in response".into()))
@@ -273,6 +354,7 @@ impl MakeMkv {
                 MakeMkvCommand::BackUpdateDrive => {
                     let drive = DriveInfo::try_from_update(&args, data);
                     if let Some(d) = drive {
+                        debug!("Drive info: {:?}", &d);
                         self.drive = Some(d);
                     }
                 }
@@ -283,6 +365,7 @@ impl MakeMkv {
                     let handle = u32s_to_u64(args[1], args[0]);
                     let size = args[2];
                     self.titles = Some(TitleList::new(handle, size));
+                    debug!("Setting titles");
                 }
                 MakeMkvCommand::BackSetTitleInfo => {
                     if args.len() != 7 || self.titles.is_none() {
@@ -290,13 +373,9 @@ impl MakeMkv {
                     }
                     let handle = u32s_to_u64(args[2], args[1]);
                     let chapter_handle = u32s_to_u64(args[6], args[5]);
-                    self.titles.as_mut().unwrap().add_title(
-                        args[0],
-                        handle,
-                        chapter_handle,
-                        args[4],
-                        args[3],
-                    );
+                    if let Some(titles) = &mut self.titles {
+                        titles.add_title(args[0], handle, chapter_handle, args[4], args[3]);
+                    }
                 }
                 MakeMkvCommand::BackSetTrackInfo => {
                     if args.len() != 4 {
