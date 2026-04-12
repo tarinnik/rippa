@@ -4,9 +4,9 @@ name = "makemkv"
 version = "0.1.0"
 
 [dependencies]
-anyhow = "1.0.102"
-flate2 = "1.1.9"
-log = "0.4.29"
-thiserror = "2.0.17"
-tokio = { version = "1.48.0", features = ["io-util", "process", "time"] }
-zerocopy = { version = "0.8.30", features = ["derive"] }
+anyhow = { workspace = true }
+flate2 = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["process", "time"] }
+zerocopy = { workspace = true }
