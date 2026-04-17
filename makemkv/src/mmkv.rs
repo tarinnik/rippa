@@ -1,8 +1,7 @@
 use crate::{
-    command::{AbiResponse, AppString, MakeMkvCommand, MakeMkvHeader},
+    command::{AbiResponse, AppString, ItemAttribute, MakeMkvCommand, MakeMkvHeader},
     drive::DriveInfo,
     error::MakeMkvError,
-    item_attribute::ItemAttribute,
     language_data::LanguageData,
     title::TitleList,
     util::{u32s_to_u64, u64_to_le_u32},
