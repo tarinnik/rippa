@@ -9,6 +9,10 @@ pub enum MakeMkvError {
     InvalidCommand(String),
     #[error("Invalid MakeMKV response: {0}")]
     InvalidResponse(String),
+    #[error("No disc drive detected")]
+    DriveNotDetected,
+    #[error("Unable to parse drive info: {0}")]
+    DriveInfo(String),
 }
 
 impl From<io::Error> for MakeMkvError {

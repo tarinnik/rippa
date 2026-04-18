@@ -1,6 +1,6 @@
 use crate::{
     command::{AbiResponse, AppString, ItemAttribute, MakeMkvCommand, MakeMkvHeader},
-    drive::DriveInfo,
+    drive::{DriveInfo, DriveState},
     error::MakeMkvError,
     language_data::LanguageData,
     title::TitleList,
@@ -17,7 +17,7 @@ use std::{
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::{Child, Command},
-    time::timeout,
+    time::{sleep, timeout},
 };
 use zerocopy::{FromBytes, IntoBytes};
 
@@ -94,19 +94,40 @@ impl MakeMkv {
 
         self.mmkv = Some(mmkv);
 
+        self.load_interface_language_data().await?;
+        self.update_available_drives(None).await?;
+
         Ok(())
     }
 
-    pub async fn idle(&mut self) -> Result<(), MakeMkvError> {
+    pub async fn wait_for_disc_inserted(&mut self) -> Result<(), MakeMkvError> {
+        loop {
+            let drive = self.drive.as_ref().ok_or(MakeMkvError::DriveNotDetected)?;
+            if drive.drive_state == DriveState::Inserted {
+                self.open_disk(drive.drive_id, None).await?;
+                return Ok(());
+            }
+
+            self.idle().await?;
+            sleep(Duration::from_millis(250)).await;
+        }
+    }
+
+    pub async fn get_disc_data(&mut self) -> Result<(), MakeMkvError> {
+        while self.titles.is_none() {
+            self.idle().await?;
+            sleep(Duration::from_millis(250)).await;
+        }
+        Ok(())
+    }
+
+    async fn idle(&mut self) -> Result<(), MakeMkvError> {
         self.transact(MakeMkvCommand::CallOnIdle, None, None)
             .await?;
         Ok(())
     }
 
-    pub async fn update_available_drives(
-        &mut self,
-        flags: Option<u32>,
-    ) -> Result<(), MakeMkvError> {
+    async fn update_available_drives(&mut self, flags: Option<u32>) -> Result<(), MakeMkvError> {
         let args = flags.unwrap_or(0);
         self.transact(
             MakeMkvCommand::CallUpdateAvailableDrives,
@@ -117,7 +138,7 @@ impl MakeMkv {
         Ok(())
     }
 
-    pub async fn get_app_string(
+    async fn get_app_string(
         &mut self,
         key: AppString,
         index1: Option<u32>,
@@ -133,14 +154,14 @@ impl MakeMkv {
         Ok(data.to_string())
     }
 
-    pub async fn open_disk(&mut self, index: u32, flags: Option<u32>) -> Result<(), MakeMkvError> {
+    async fn open_disk(&mut self, index: u32, flags: Option<u32>) -> Result<(), MakeMkvError> {
         let flags = flags.unwrap_or(0);
         self.transact(MakeMkvCommand::CallOpenDisk, Some(vec![index, flags]), None)
             .await?;
         Ok(())
     }
 
-    pub async fn load_interface_language_data(&mut self) -> Result<(), MakeMkvError> {
+    async fn load_interface_language_data(&mut self) -> Result<(), MakeMkvError> {
         let result = self
             .transact(
                 MakeMkvCommand::CallGetInterfaceLanguageData,
@@ -177,7 +198,7 @@ impl MakeMkv {
         Ok(())
     }
 
-    pub async fn get_ui_item_info(
+    async fn get_ui_item_info(
         &mut self,
         handle: u64,
         item_attribute: ItemAttribute,
@@ -210,7 +231,7 @@ impl MakeMkv {
         ))
     }
 
-    pub async fn get_item_state(&mut self, handle: u64) -> Result<u32, MakeMkvError> {
+    async fn get_item_state(&mut self, handle: u64) -> Result<u32, MakeMkvError> {
         let args = u64_to_le_u32(handle).to_vec();
         let response = self
             .transact(MakeMkvCommand::CallGetUiItemState, Some(args), None)
@@ -223,7 +244,7 @@ impl MakeMkv {
         }
     }
 
-    pub async fn set_item_state(&mut self, handle: u64, state: u32) -> Result<(), MakeMkvError> {
+    async fn set_item_state(&mut self, handle: u64, state: u32) -> Result<(), MakeMkvError> {
         let mut args = u64_to_le_u32(handle).to_vec();
         args.push(state);
         self.transact(MakeMkvCommand::CallSetUiItemState, Some(args), None)
@@ -231,7 +252,7 @@ impl MakeMkv {
         Ok(())
     }
 
-    pub async fn set_output_folder(&mut self, folder: &str) -> Result<(), MakeMkvError> {
+    async fn set_output_folder(&mut self, folder: &str) -> Result<(), MakeMkvError> {
         let mut data = folder.as_bytes().to_vec();
         data.push(0);
         self.transact(MakeMkvCommand::CallSetOutputFolder, None, Some(data))
@@ -239,7 +260,7 @@ impl MakeMkv {
         Ok(())
     }
 
-    pub async fn rip_all_selected(&mut self) -> Result<(), MakeMkvError> {
+    async fn rip_all_selected(&mut self) -> Result<(), MakeMkvError> {
         self.transact(MakeMkvCommand::CallSaveAllSelectedTitlesToMkv, None, None)
             .await?;
         Ok(())
@@ -271,12 +292,11 @@ impl MakeMkv {
 
         let mut buf = Vec::new();
 
-        let mut data = data.unwrap_or_else(|| Vec::new());
+        let mut data = data.unwrap_or_default();
         let mut args: Vec<u8> = args
-            .unwrap_or_else(|| Vec::new())
+            .unwrap_or_default()
             .into_iter()
-            .map(|x| x.to_le_bytes().to_vec())
-            .flatten()
+            .flat_map(|x| x.to_le_bytes().to_vec())
             .collect();
 
         let mut header = MakeMkvHeader::new(data.len() as u16, (args.len() / 4) as u8, cmd)
@@ -299,10 +319,11 @@ impl MakeMkv {
     /// Receive a message from MakeMKV
     async fn receive_response(&mut self) -> anyhow::Result<AbiResponse> {
         ensure!(self.mmkv.is_some(), "MakeMKV not initialised");
-        let mmkv = self.mmkv.as_mut().unwrap();
-        let stdout = mmkv.stdout.as_mut().context("MakeMKV stdout is None")?;
 
         loop {
+            let mmkv = self.mmkv.as_mut().unwrap();
+            let stdout = mmkv.stdout.as_mut().context("MakeMKV stdout is None")?;
+
             let mut buf = [0_u8; 4];
             let n = stdout.read(&mut buf).await?;
 
@@ -351,11 +372,9 @@ impl MakeMkv {
             match cmd {
                 MakeMkvCommand::Noop => {}
                 MakeMkvCommand::BackUpdateDrive => {
-                    let drive = DriveInfo::try_from_update(&args, data);
-                    if let Some(d) = drive {
-                        debug!("Drive info: {:?}", &d);
-                        self.drive = Some(d);
-                    }
+                    let drive = DriveInfo::try_from_update(&args, data)?;
+                    debug!("Drive info: {:?}", &drive);
+                    self.drive = Some(drive);
                 }
                 MakeMkvCommand::BackSetTitleCollInfo => {
                     if args.len() != 3 {
@@ -396,20 +415,20 @@ impl MakeMkv {
                 }
                 MakeMkvCommand::BackUpdateCurrentInfo => {
                     // TODO: Handle more cases
-                    if args.len() > 0 && args[0] < 10 {
+                    if !args.is_empty() && args[0] < 10 {
                         self.current_info[args[0] as usize] =
-                            Some(String::from_utf8_lossy(&data).to_string());
+                            Some(String::from_utf8_lossy(data).to_string());
                     }
                 }
                 MakeMkvCommand::BackEnterJobMode => self.job_mode = true,
                 MakeMkvCommand::BackLeaveJobMode => self.job_mode = false,
                 MakeMkvCommand::BackUpdateCurrentBar => {
-                    if args.len() > 0 {
+                    if !args.is_empty() {
                         self.current_bar = args[0];
                     }
                 }
                 MakeMkvCommand::BackUpdateTotalBar => {
-                    if args.len() > 0 {
+                    if !args.is_empty() {
                         self.total_bar = args[0];
                     }
                 }
@@ -419,8 +438,8 @@ impl MakeMkv {
                 _ => {}
             }
 
-            // self.send_command(MakeMkvCommand::ClientDone, None, None)
-            //     .await?;
+            self.send_command(MakeMkvCommand::ClientDone, None, None)
+                .await?;
         }
     }
 }

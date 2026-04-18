@@ -6,6 +6,7 @@ resolver = "3"
 anyhow = "1.0.102"
 askama = "0.15.6"
 axum = { version = "0.8.8", features = ["macros"] }
+chrono = "0.4.44"
 flate2 = "1.1.9"
 log = "0.4.29"
 thiserror = "2.0.18"
