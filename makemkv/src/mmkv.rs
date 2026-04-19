@@ -118,6 +118,26 @@ impl MakeMkv {
             self.idle().await?;
             sleep(Duration::from_millis(250)).await;
         }
+
+        if let Some(mut titles) = self.titles.take() {
+            titles.get_data(self).await?;
+            self.titles = Some(titles);
+        }
+
+        Ok(())
+    }
+
+    pub async fn set_output_folder(&mut self, folder: &str) -> Result<(), MakeMkvError> {
+        let mut data = folder.as_bytes().to_vec();
+        data.push(0);
+        self.transact(MakeMkvCommand::CallSetOutputFolder, None, Some(data))
+            .await?;
+        Ok(())
+    }
+
+    pub async fn rip_all_selected(&mut self) -> Result<(), MakeMkvError> {
+        self.transact(MakeMkvCommand::CallSaveAllSelectedTitlesToMkv, None, None)
+            .await?;
         Ok(())
     }
 
@@ -198,7 +218,7 @@ impl MakeMkv {
         Ok(())
     }
 
-    async fn get_ui_item_info(
+    pub(crate) async fn get_ui_item_info(
         &mut self,
         handle: u64,
         item_attribute: ItemAttribute,
@@ -231,7 +251,7 @@ impl MakeMkv {
         ))
     }
 
-    async fn get_item_state(&mut self, handle: u64) -> Result<u32, MakeMkvError> {
+    pub(crate) async fn get_item_state(&mut self, handle: u64) -> Result<u32, MakeMkvError> {
         let args = u64_to_le_u32(handle).to_vec();
         let response = self
             .transact(MakeMkvCommand::CallGetUiItemState, Some(args), None)
@@ -248,20 +268,6 @@ impl MakeMkv {
         let mut args = u64_to_le_u32(handle).to_vec();
         args.push(state);
         self.transact(MakeMkvCommand::CallSetUiItemState, Some(args), None)
-            .await?;
-        Ok(())
-    }
-
-    async fn set_output_folder(&mut self, folder: &str) -> Result<(), MakeMkvError> {
-        let mut data = folder.as_bytes().to_vec();
-        data.push(0);
-        self.transact(MakeMkvCommand::CallSetOutputFolder, None, Some(data))
-            .await?;
-        Ok(())
-    }
-
-    async fn rip_all_selected(&mut self) -> Result<(), MakeMkvError> {
-        self.transact(MakeMkvCommand::CallSaveAllSelectedTitlesToMkv, None, None)
             .await?;
         Ok(())
     }
