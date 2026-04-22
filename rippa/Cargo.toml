@@ -8,5 +8,6 @@ anyhow = { workspace = true }
 askama = { workspace = true }
 axum = { workspace = true }
 log = { workspace = true }
+makemkv = { path = "../makemkv" }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
