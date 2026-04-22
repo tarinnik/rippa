@@ -7,6 +7,7 @@ version = "0.1.0"
 anyhow = { workspace = true }
 chrono = { workspace = true }
 flate2 = { workspace = true }
+futures = "0.3.32"
 log = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["process", "time"] }

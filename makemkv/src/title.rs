@@ -1,6 +1,31 @@
-use std::time::Duration;
-
 use crate::{MakeMkv, command::ItemAttribute, error::MakeMkvError};
+use futures::FutureExt;
+use std::{future::Future, time::Duration};
+
+pub trait Rippable {
+    /// Returns the handle of the object
+    fn handle(&self) -> u64;
+
+    /// Enables or disables the item to be ripped
+    fn enable(
+        &self,
+        enable: bool,
+        makemkv: &mut MakeMkv,
+    ) -> impl Future<Output = Result<(), MakeMkvError>> + Send {
+        let state = 0xfffffffe | enable as u32;
+        makemkv.set_item_state(self.handle(), state)
+    }
+
+    /// Checks if the item will be ripped
+    fn is_enabled(
+        &self,
+        makemkv: &mut MakeMkv,
+    ) -> impl Future<Output = Result<bool, MakeMkvError>> + Send {
+        makemkv
+            .get_item_state(self.handle())
+            .map(|result| result.map(|value| value & 0x01 == 1))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct TitleList {
@@ -120,6 +145,12 @@ impl Title {
     }
 }
 
+impl Rippable for Title {
+    fn handle(&self) -> u64 {
+        self.handle
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Track {
     handle: u64,
@@ -146,6 +177,12 @@ impl Track {
             .await?;
 
         Ok(())
+    }
+}
+
+impl Rippable for Track {
+    fn handle(&self) -> u64 {
+        self.handle
     }
 }
 

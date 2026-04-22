@@ -27,11 +27,12 @@ const ABI_VERSION: &str = "A0001";
 const TRANSPORT: &str = "std"; // pipe transport
 const AP_APP_LOC_MAX: u32 = 7000;
 
+#[derive(Default)]
 pub struct MakeMkv {
     mmkv: Option<Child>,
-    drive: Option<DriveInfo>,
-    titles: Option<TitleList>,
-    language_data: Option<LanguageData>,
+    pub drive: Option<DriveInfo>,
+    pub titles: Option<TitleList>,
+    pub language_data: Option<LanguageData>,
     current_info: Vec<Option<String>>,
     current_bar: u32,
     total_bar: u32,
@@ -41,14 +42,8 @@ pub struct MakeMkv {
 impl MakeMkv {
     pub fn new() -> Self {
         Self {
-            mmkv: None,
-            drive: None,
-            titles: None,
-            language_data: None,
             current_info: vec![None; 10],
-            current_bar: 0,
-            total_bar: 0,
-            job_mode: false,
+            ..Default::default()
         }
     }
 
@@ -264,7 +259,11 @@ impl MakeMkv {
         }
     }
 
-    async fn set_item_state(&mut self, handle: u64, state: u32) -> Result<(), MakeMkvError> {
+    pub(crate) async fn set_item_state(
+        &mut self,
+        handle: u64,
+        state: u32,
+    ) -> Result<(), MakeMkvError> {
         let mut args = u64_to_le_u32(handle).to_vec();
         args.push(state);
         self.transact(MakeMkvCommand::CallSetUiItemState, Some(args), None)
