@@ -1,5 +1,6 @@
 use crate::{MakeMkv, command::ItemAttribute, error::MakeMkvError};
 use futures::FutureExt;
+use log::debug;
 use std::{future::Future, time::Duration};
 
 pub trait Rippable {
@@ -32,7 +33,6 @@ pub struct TitleList {
     handle: u64,
     size: u32,
     pub titles: Vec<Option<Title>>,
-    pub name: Option<String>,
 }
 
 impl TitleList {
@@ -41,7 +41,6 @@ impl TitleList {
             handle,
             titles: vec![None; size as usize],
             size,
-            name: None,
         }
     }
 
@@ -79,10 +78,6 @@ impl TitleList {
 
     /// Get all the data related to the titles, including name and length
     pub(crate) async fn get_data(&mut self, makemkv: &mut MakeMkv) -> Result<(), MakeMkvError> {
-        self.name = makemkv
-            .get_ui_item_info(self.handle, ItemAttribute::Name)
-            .await?;
-
         for title in self.titles.iter_mut().flatten() {
             title.get_data(makemkv).await?;
         }
@@ -125,12 +120,14 @@ impl Title {
         self.name = makemkv
             .get_ui_item_info(self.handle, ItemAttribute::Name)
             .await?;
+        debug!("Title name; {:?}", &self.name);
 
         self.duration = parse_duration(
             makemkv
                 .get_ui_item_info(self.handle, ItemAttribute::Duration)
                 .await?,
         );
+        debug!("Title duration; {:?}", &self.duration);
 
         self.disc_size = makemkv
             .get_ui_item_info(self.handle, ItemAttribute::DiskSize)
@@ -191,7 +188,6 @@ pub struct ChapterList {
     handle: u64,
     size: u32,
     chapters: Vec<Option<Chapter>>,
-    chapter_count: Option<u32>,
 }
 
 impl ChapterList {
@@ -200,7 +196,6 @@ impl ChapterList {
             handle,
             chapters: vec![None; size as usize],
             size,
-            ..Default::default()
         }
     }
 
@@ -213,11 +208,6 @@ impl ChapterList {
     }
 
     async fn get_data(&mut self, makemkv: &mut MakeMkv) -> Result<(), MakeMkvError> {
-        self.chapter_count = makemkv
-            .get_ui_item_info(self.handle, ItemAttribute::ChapterCount)
-            .await?
-            .and_then(|s| s.parse::<u32>().ok());
-
         for chapter in self.chapters.iter_mut().flatten() {
             chapter.get_data(makemkv).await?;
         }

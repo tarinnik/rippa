@@ -7,6 +7,7 @@ version = "0.1.0"
 anyhow = { workspace = true }
 askama = { workspace = true }
 axum = { workspace = true }
+flexi_logger = "0.31.8"
 log = { workspace = true }
 makemkv = { path = "../makemkv" }
 thiserror = { workspace = true }

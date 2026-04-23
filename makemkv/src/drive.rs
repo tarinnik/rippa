@@ -109,10 +109,11 @@ impl DriveInfo {
         let mut start_index = 0;
         let mut end_index = 0;
         while end_index < data.len() {
+            start_index = end_index;
             ensure!(start_index + 8 <= data.len(), "Not enough data");
 
             let command_id =
-                u32::from_be_bytes(u32_const_slice(&data[start_index..start_index + 1]));
+                u32::from_be_bytes(u32_const_slice(&data[start_index..start_index + 4]));
             let data_size =
                 u32::from_be_bytes(u32_const_slice(&data[start_index + 4..start_index + 8]))
                     as usize;
@@ -199,7 +200,10 @@ impl DriveInfo {
                     });
                 }
                 DriveInfoId::DISC_STRUCTURE_BD_DISC_INFORMATION => {
-                    ensure!(data_size >= 20, "Not enough data for BD disc info");
+                    if data_size < 20 {
+                        warn!("Not enough data for BD disc info, data size: {}", data_size);
+                        continue;
+                    }
                     let data_check1 = &data[start_index + 4..start_index + 7];
                     let data_check2 = &data[start_index + 12..start_index + 15];
                     if data_check1 == b"DI\x01"

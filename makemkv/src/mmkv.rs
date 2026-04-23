@@ -8,7 +8,7 @@ use crate::{
 };
 use anyhow::{Context, anyhow, bail, ensure};
 use flate2::bufread::ZlibDecoder;
-use log::debug;
+use log::{debug, warn};
 use std::{
     io::{self, Read},
     process::Stdio,
@@ -90,30 +90,34 @@ impl MakeMkv {
         self.mmkv = Some(mmkv);
 
         self.load_interface_language_data().await?;
-        self.update_available_drives(None).await?;
 
         Ok(())
     }
 
     pub async fn wait_for_disc_inserted(&mut self) -> Result<(), MakeMkvError> {
+        self.update_available_drives(None).await?;
         loop {
-            let drive = self.drive.as_ref().ok_or(MakeMkvError::DriveNotDetected)?;
-            if drive.drive_state == DriveState::Inserted {
+            debug!("Waiting for disc inserted");
+            if let Some(drive) = &self.drive
+                && drive.drive_state == DriveState::Inserted
+            {
                 self.open_disk(drive.drive_id, None).await?;
                 return Ok(());
             }
 
-            self.idle().await?;
             sleep(Duration::from_millis(250)).await;
+            self.idle().await?;
         }
     }
 
     pub async fn get_disc_data(&mut self) -> Result<(), MakeMkvError> {
         while self.titles.is_none() {
-            self.idle().await?;
+            debug!("Waiting for disc data");
             sleep(Duration::from_millis(250)).await;
+            self.idle().await?;
         }
 
+        debug!("Getting title info");
         if let Some(mut titles) = self.titles.take() {
             titles.get_data(self).await?;
             self.titles = Some(titles);
@@ -193,9 +197,12 @@ impl MakeMkv {
         let unpacked_size = result.args[0];
         let packed_size = result.args[1];
         if packed_size as usize != result.data.len() {
-            return Err(MakeMkvError::InvalidResponse(
-                "Returned data size does not match expected data size".into(),
-            ));
+            return Err(MakeMkvError::InvalidResponse(format!(
+                "Returned data size {} does not match expected data size {}, unpacked size: {}",
+                result.data.len(),
+                packed_size,
+                unpacked_size
+            )));
         }
 
         let mut unpacked_data = Vec::with_capacity(unpacked_size as usize);
@@ -329,6 +336,7 @@ impl MakeMkv {
             let mmkv = self.mmkv.as_mut().unwrap();
             let stdout = mmkv.stdout.as_mut().context("MakeMKV stdout is None")?;
 
+            debug!("Waiting for header data");
             let mut buf = [0_u8; 4];
             let n = stdout.read(&mut buf).await?;
 
@@ -351,12 +359,19 @@ impl MakeMkv {
                 cmd = (cmd_num - MAGIC_CMD_NUMBER).try_into()?;
                 data_size = 0;
                 arg_len = 0;
+            // } else if n == 0 {
+            //     warn!("Header size of 0 received");
+            //     continue;
             } else {
                 bail!("{} is not a valid header length", n);
             }
 
-            debug!("Received cmd: {:?}", cmd);
+            debug!(
+                "Received cmd: {:?}, arg_len: {}, data_size: {}",
+                cmd, arg_len, data_size
+            );
 
+            debug!("Waiting for arg data");
             let mut args: Vec<u32> = Vec::with_capacity(arg_len as usize);
             for _ in 0..arg_len {
                 let mut buf = [0_u8; 4];
@@ -366,20 +381,26 @@ impl MakeMkv {
                     .context("Unable to read arg bytes from mmkv")?;
                 args.push(u32::from_le_bytes(buf));
             }
+            debug!("Got args: {:?}", &args);
 
-            let mut data_buf = Vec::with_capacity(data_size as usize);
-            let n = timeout(Duration::from_secs(1), stdout.read(&mut data_buf))
+            let mut data_buf = vec![0_u8; data_size as usize];
+            let n = timeout(Duration::from_secs(1), stdout.read_exact(&mut data_buf))
                 .await
                 .context("Timeout waiting for data")?
                 .context("Unable to read data bytes from mmkv")?;
             let data = &data_buf[..n];
+            debug!("Got data: {:?}", &data);
 
             match cmd {
                 MakeMkvCommand::Noop => {}
                 MakeMkvCommand::BackUpdateDrive => {
-                    let drive = DriveInfo::try_from_update(&args, data)?;
-                    debug!("Drive info: {:?}", &drive);
-                    self.drive = Some(drive);
+                    match DriveInfo::try_from_update(&args, data) {
+                        Ok(drive) => {
+                            debug!("Drive info: {:?}", &drive);
+                            self.drive = Some(drive);
+                        }
+                        Err(e) => warn!("Unable to parse DriveInfo: {}", e),
+                    };
                 }
                 MakeMkvCommand::BackSetTitleCollInfo => {
                     if args.len() != 3 {
@@ -401,7 +422,7 @@ impl MakeMkv {
                     }
                 }
                 MakeMkvCommand::BackSetTrackInfo => {
-                    if args.len() != 4 {
+                    if args.len() < 4 {
                         continue;
                     }
                     let handle = u32s_to_u64(args[3], args[2]);
