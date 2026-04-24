@@ -30,7 +30,7 @@ pub trait Rippable {
 
 #[derive(Debug, Clone)]
 pub struct TitleList {
-    handle: u64,
+    _handle: u64,
     size: u32,
     pub titles: Vec<Option<Title>>,
 }
@@ -38,7 +38,7 @@ pub struct TitleList {
 impl TitleList {
     pub(crate) fn new(handle: u64, size: u32) -> Self {
         Self {
-            handle,
+            _handle: handle,
             titles: vec![None; size as usize],
             size,
         }
@@ -185,7 +185,7 @@ impl Rippable for Track {
 
 #[derive(Debug, Clone, Default)]
 pub struct ChapterList {
-    handle: u64,
+    _handle: u64,
     size: u32,
     chapters: Vec<Option<Chapter>>,
 }
@@ -193,7 +193,7 @@ pub struct ChapterList {
 impl ChapterList {
     fn new(handle: u64, size: u32) -> Self {
         Self {
-            handle,
+            _handle: handle,
             chapters: vec![None; size as usize],
             size,
         }

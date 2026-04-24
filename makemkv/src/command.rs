@@ -140,15 +140,25 @@ impl MakeMkvHeader {
 }
 
 pub struct AbiResponse {
-    pub cmd: MakeMkvCommand,
+    pub _cmd: MakeMkvCommand,
     pub args: Vec<u32>,
     pub data: Vec<u8>,
 }
 
 impl AbiResponse {
     pub fn new(cmd: MakeMkvCommand, args: Vec<u32>, data: Vec<u8>) -> Self {
-        Self { cmd, args, data }
+        Self {
+            _cmd: cmd,
+            args,
+            data,
+        }
     }
+}
+
+pub struct MakeMkvInfo {
+    pub name: Option<String>,
+    pub version: Option<String>,
+    pub platform: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug)]

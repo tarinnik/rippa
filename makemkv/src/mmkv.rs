@@ -33,7 +33,7 @@ pub struct MakeMkv {
     pub drive: Option<DriveInfo>,
     pub titles: Option<TitleList>,
     pub language_data: Option<LanguageData>,
-    current_info: Vec<Option<String>>,
+    pub current_info: Vec<Option<String>>,
     current_bar: u32,
     total_bar: u32,
     job_mode: bool,
@@ -90,6 +90,7 @@ impl MakeMkv {
         self.mmkv = Some(mmkv);
 
         self.load_interface_language_data().await?;
+        self.get_makemkv_info().await?:
 
         Ok(())
     }
@@ -137,6 +138,10 @@ impl MakeMkv {
     pub async fn rip_all_selected(&mut self) -> Result<(), MakeMkvError> {
         self.transact(MakeMkvCommand::CallSaveAllSelectedTitlesToMkv, None, None)
             .await?;
+        Ok(())
+    }
+
+    async fn get_makemkv_info(&mut self) -> Result<(), MakeMkvError> {
         Ok(())
     }
 
