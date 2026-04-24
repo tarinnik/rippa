@@ -155,10 +155,12 @@ impl AbiResponse {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct MakeMkvInfo {
-    pub name: Option<String>,
-    pub version: Option<String>,
-    pub platform: Option<String>,
+    pub name: String,
+    pub version: String,
+    pub platform: String,
+    pub interface_language: String,
 }
 
 #[derive(Copy, Clone, Debug)]

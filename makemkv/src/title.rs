@@ -7,16 +7,6 @@ pub trait Rippable {
     /// Returns the handle of the object
     fn handle(&self) -> u64;
 
-    /// Enables or disables the item to be ripped
-    fn enable(
-        &self,
-        enable: bool,
-        makemkv: &mut MakeMkv,
-    ) -> impl Future<Output = Result<(), MakeMkvError>> + Send {
-        let state = 0xfffffffe | enable as u32;
-        makemkv.set_item_state(self.handle(), state)
-    }
-
     /// Checks if the item will be ripped
     fn is_enabled(
         &self,

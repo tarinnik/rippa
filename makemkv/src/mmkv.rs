@@ -1,9 +1,9 @@
 use crate::{
-    command::{AbiResponse, AppString, ItemAttribute, MakeMkvCommand, MakeMkvHeader},
+    command::{AbiResponse, AppString, ItemAttribute, MakeMkvCommand, MakeMkvHeader, MakeMkvInfo},
     drive::{DriveInfo, DriveState},
     error::MakeMkvError,
     language_data::LanguageData,
-    title::TitleList,
+    title::{Rippable, TitleList},
     util::{u32s_to_u64, u64_to_le_u32},
 };
 use anyhow::{Context, anyhow, bail, ensure};
@@ -32,7 +32,7 @@ pub struct MakeMkv {
     mmkv: Option<Child>,
     pub drive: Option<DriveInfo>,
     pub titles: Option<TitleList>,
-    pub language_data: Option<LanguageData>,
+    language_data: Option<LanguageData>,
     pub current_info: Vec<Option<String>>,
     current_bar: u32,
     total_bar: u32,
@@ -48,7 +48,7 @@ impl MakeMkv {
     }
 
     /// Spawns the makemkv process
-    pub async fn init(&mut self) -> Result<(), MakeMkvError> {
+    pub async fn init(&mut self) -> Result<MakeMkvInfo, MakeMkvError> {
         let mut mmkv = Command::new(PROGRAM_NAME)
             .arg("guiserver")
             .arg(format!("{}+{}", ABI_VERSION, TRANSPORT))
@@ -90,12 +90,10 @@ impl MakeMkv {
         self.mmkv = Some(mmkv);
 
         self.load_interface_language_data().await?;
-        self.get_makemkv_info().await?:
-
-        Ok(())
+        self.get_makemkv_info().await
     }
 
-    pub async fn wait_for_disc_inserted(&mut self) -> Result<(), MakeMkvError> {
+    async fn wait_for_disc_inserted(&mut self) -> Result<(), MakeMkvError> {
         self.update_available_drives(None).await?;
         loop {
             debug!("Waiting for disc inserted");
@@ -111,7 +109,9 @@ impl MakeMkv {
         }
     }
 
-    pub async fn get_disc_data(&mut self) -> Result<(), MakeMkvError> {
+    pub async fn get_disc_data(&mut self) -> Result<TitleList, MakeMkvError> {
+        self.wait_for_disc_inserted().await?;
+
         while self.titles.is_none() {
             debug!("Waiting for disc data");
             sleep(Duration::from_millis(250)).await;
@@ -121,10 +121,11 @@ impl MakeMkv {
         debug!("Getting title info");
         if let Some(mut titles) = self.titles.take() {
             titles.get_data(self).await?;
-            self.titles = Some(titles);
+            self.titles = Some(titles.clone());
+            Ok(titles)
+        } else {
+            Err(MakeMkvError::MakeMkv("No title info".into()))
         }
-
-        Ok(())
     }
 
     pub async fn set_output_folder(&mut self, folder: &str) -> Result<(), MakeMkvError> {
@@ -135,14 +136,35 @@ impl MakeMkv {
         Ok(())
     }
 
+    /// Enables or disables the item to be ripped
+    pub async fn enable<R: Rippable>(
+        &mut self,
+        item: &R,
+        enable: bool,
+    ) -> Result<(), MakeMkvError> {
+        let state = 0xfffffffe | enable as u32;
+        self.set_item_state(item.handle(), state).await
+    }
+
     pub async fn rip_all_selected(&mut self) -> Result<(), MakeMkvError> {
         self.transact(MakeMkvCommand::CallSaveAllSelectedTitlesToMkv, None, None)
             .await?;
         Ok(())
     }
 
-    async fn get_makemkv_info(&mut self) -> Result<(), MakeMkvError> {
-        Ok(())
+    async fn get_makemkv_info(&mut self) -> Result<MakeMkvInfo, MakeMkvError> {
+        let name = self.get_app_string(AppString::Name, None, None).await?;
+        let version = self.get_app_string(AppString::Version, None, None).await?;
+        let platform = self.get_app_string(AppString::Platform, None, None).await?;
+        let interface_language = self
+            .get_app_string(AppString::InterfaceLanguage, None, None)
+            .await?;
+        Ok(MakeMkvInfo {
+            name,
+            version,
+            platform,
+            interface_language,
+        })
     }
 
     async fn idle(&mut self) -> Result<(), MakeMkvError> {
@@ -173,7 +195,7 @@ impl MakeMkv {
             .transact(MakeMkvCommand::CallAppGetString, Some(args), None)
             .await?;
 
-        let data = String::from_utf8_lossy(&response.data);
+        let data = String::from_utf8_lossy(&response.data[..response.data.len() - 1]);
 
         Ok(data.to_string())
     }

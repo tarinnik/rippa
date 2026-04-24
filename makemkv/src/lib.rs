@@ -6,4 +6,5 @@ mod mmkv;
 pub mod title;
 mod util;
 
+pub use command::MakeMkvInfo;
 pub use mmkv::MakeMkv;
