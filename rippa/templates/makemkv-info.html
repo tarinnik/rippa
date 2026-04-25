@@ -1,5 +1,5 @@
 {% if let Some(info) = info %}
-<ul>
+<ul hx-get="/makemkv-disc-data" hx-trigger="load" hx-target="#makemkv-disc-data">
     <li>Name: {{info.name}}</li>
     <li>Version: {{info.version}}</li>
     <li>Platform: {{info.platform}}</li>

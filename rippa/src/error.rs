@@ -3,7 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use makemkv::error::MakeMkvError;
-use tokio::task::{JoinError, JoinHandle};
+use tokio::task::JoinError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RippaError {
