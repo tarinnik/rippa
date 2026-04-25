@@ -1,0 +1,12 @@
+{% if let Some(info) = info %}
+<ul>
+    <li>Name: {{info.name}}</li>
+    <li>Version: {{info.version}}</li>
+    <li>Platform: {{info.platform}}</li>
+    <li>Language: {{info.interface_language}}</li>
+</ul>
+{% else if state == MakeMkvState::Initialising %}
+<p hx-post="/makemkv-init-check" hx-trigger="load delay:1s" hx-target="#makemkv-info">Starting MakeMKV</p>
+{% else %}
+<button hx-post="/makemkv-init" hx-target="#makemkv-info">Start MakeMKV</button>
+{% endif %}
