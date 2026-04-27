@@ -17,6 +17,8 @@ pub enum RippaError {
     MakeMkvNotRunning,
     #[error("Task exited unexpectedly: {0}")]
     TaskError(#[from] JoinError),
+    #[error("Invalid title")]
+    InvalidTitle,
 }
 
 impl IntoResponse for RippaError {
@@ -27,6 +29,7 @@ impl IntoResponse for RippaError {
             Self::MakeMkvAlreadyRunning => StatusCode::METHOD_NOT_ALLOWED.into_response(),
             Self::MakeMkvNotRunning => StatusCode::METHOD_NOT_ALLOWED.into_response(),
             Self::TaskError(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            Self::InvalidTitle => StatusCode::BAD_REQUEST.into_response(),
         }
     }
 }

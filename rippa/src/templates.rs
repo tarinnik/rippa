@@ -19,6 +19,7 @@ impl<T> AxumAskama for T where T: Template {}
 pub struct IndexPage {
     pub makemkv_info: MakeMkvInfoPage,
     pub makemkv_disc_data: MakeMkvDiscDataPage,
+    pub makemkv_rip: MakeMkvRipPage,
 }
 
 impl IndexPage {
@@ -26,6 +27,7 @@ impl IndexPage {
         Self {
             makemkv_info: MakeMkvInfoPage::new(state),
             makemkv_disc_data: MakeMkvDiscDataPage::new(state),
+            makemkv_rip: MakeMkvRipPage::new(state),
         }
     }
 }
@@ -57,6 +59,24 @@ impl MakeMkvDiscDataPage {
     pub fn new(state: &RippaState) -> Self {
         Self {
             title_list: state.titles.clone(),
+            state: state.makemkv_state,
+        }
+    }
+}
+
+#[derive(Template)]
+#[template(path = "makemkv-rip.html")]
+pub struct MakeMkvRipPage {
+    pub current_progress: String,
+    pub total_progress: String,
+    pub state: MakeMkvState,
+}
+
+impl MakeMkvRipPage {
+    pub fn new(state: &RippaState) -> Self {
+        Self {
+            current_progress: format!("{:.2}", state.makemkv_rip_progress.current),
+            total_progress: format!("{:.2}", state.makemkv_rip_progress.total),
             state: state.makemkv_state,
         }
     }

@@ -1,5 +1,8 @@
 use crate::{
-    command::{AbiResponse, AppString, ItemAttribute, MakeMkvCommand, MakeMkvHeader, MakeMkvInfo},
+    command::{
+        AbiResponse, AppString, ItemAttribute, MakeMkvCommand, MakeMkvHeader, MakeMkvInfo,
+        MakeMkvProgress,
+    },
     drive::{DriveInfo, DriveState},
     error::MakeMkvError,
     language_data::LanguageData,
@@ -8,7 +11,7 @@ use crate::{
 };
 use anyhow::{Context, anyhow, bail, ensure};
 use flate2::bufread::ZlibDecoder;
-use log::{debug, warn};
+use log::{debug, info, trace, warn};
 use std::{
     io::{self, Read},
     process::Stdio,
@@ -17,6 +20,7 @@ use std::{
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::{Child, Command},
+    sync::watch::Sender,
     time::{sleep, timeout},
 };
 use zerocopy::{FromBytes, IntoBytes};
@@ -34,9 +38,9 @@ pub struct MakeMkv {
     pub titles: Option<TitleList>,
     language_data: Option<LanguageData>,
     pub current_info: Vec<Option<String>>,
-    current_bar: u32,
-    total_bar: u32,
+    progress: MakeMkvProgress,
     job_mode: bool,
+    progress_channel: Option<Sender<MakeMkvProgress>>,
 }
 
 impl MakeMkv {
@@ -96,7 +100,7 @@ impl MakeMkv {
     async fn wait_for_disc_inserted(&mut self) -> Result<(), MakeMkvError> {
         self.update_available_drives(None).await?;
         loop {
-            debug!("Waiting for disc inserted");
+            trace!("Waiting for disc inserted");
             if let Some(drive) = &self.drive
                 && drive.drive_state == DriveState::Inserted
             {
@@ -113,12 +117,12 @@ impl MakeMkv {
         self.wait_for_disc_inserted().await?;
 
         while self.titles.is_none() {
-            debug!("Waiting for disc data");
+            trace!("Waiting for disc data");
             sleep(Duration::from_millis(250)).await;
             self.idle().await?;
         }
 
-        debug!("Getting title info");
+        trace!("Getting title info");
         if let Some(mut titles) = self.titles.take() {
             titles.get_data(self).await?;
             self.titles = Some(titles.clone());
@@ -139,16 +143,27 @@ impl MakeMkv {
     /// Enables or disables the item to be ripped
     pub async fn enable<R: Rippable>(
         &mut self,
-        item: &R,
+        item: &mut R,
         enable: bool,
     ) -> Result<(), MakeMkvError> {
         let state = 0xfffffffe | enable as u32;
-        self.set_item_state(item.handle(), state).await
+        self.set_item_state(item.handle(), state).await?;
+        item.set_enabled(enable);
+        Ok(())
     }
 
-    pub async fn rip_all_selected(&mut self) -> Result<(), MakeMkvError> {
+    pub async fn rip_all_selected(
+        &mut self,
+        progress: Sender<MakeMkvProgress>,
+    ) -> Result<(), MakeMkvError> {
+        self.progress_channel = Some(progress);
         self.transact(MakeMkvCommand::CallSaveAllSelectedTitlesToMkv, None, None)
             .await?;
+
+        while self.job_mode {
+            self.idle().await?;
+            sleep(Duration::from_millis(250)).await;
+        }
         Ok(())
     }
 
@@ -247,7 +262,11 @@ impl MakeMkv {
         Ok(())
     }
 
-    pub(crate) async fn get_ui_item_info(
+    pub(crate) async fn is_enabled<R: Rippable>(&mut self, item: &R) -> Result<bool, MakeMkvError> {
+        Ok(self.get_item_state(item.handle()).await? & 0x01 == 1)
+    }
+
+    pub(crate) async fn get_item_info(
         &mut self,
         handle: u64,
         item_attribute: ItemAttribute,
@@ -280,7 +299,7 @@ impl MakeMkv {
         ))
     }
 
-    pub(crate) async fn get_item_state(&mut self, handle: u64) -> Result<u32, MakeMkvError> {
+    async fn get_item_state(&mut self, handle: u64) -> Result<u32, MakeMkvError> {
         let args = u64_to_le_u32(handle).to_vec();
         let response = self
             .transact(MakeMkvCommand::CallGetUiItemState, Some(args), None)
@@ -346,7 +365,7 @@ impl MakeMkv {
         buf.append(&mut args);
         buf.append(&mut data);
 
-        debug!("Sending message: {:?}", &buf);
+        trace!("Sending message: {:?}", &buf);
         stdin
             .write_all(&buf)
             .await
@@ -363,7 +382,7 @@ impl MakeMkv {
             let mmkv = self.mmkv.as_mut().unwrap();
             let stdout = mmkv.stdout.as_mut().context("MakeMKV stdout is None")?;
 
-            debug!("Waiting for header data");
+            trace!("Waiting for header data");
             let mut buf = [0_u8; 4];
             let n = stdout.read(&mut buf).await?;
 
@@ -393,12 +412,12 @@ impl MakeMkv {
                 bail!("{} is not a valid header length", n);
             }
 
-            debug!(
+            trace!(
                 "Received cmd: {:?}, arg_len: {}, data_size: {}",
                 cmd, arg_len, data_size
             );
 
-            debug!("Waiting for arg data");
+            trace!("Waiting for arg data");
             let mut args: Vec<u32> = Vec::with_capacity(arg_len as usize);
             for _ in 0..arg_len {
                 let mut buf = [0_u8; 4];
@@ -408,7 +427,7 @@ impl MakeMkv {
                     .context("Unable to read arg bytes from mmkv")?;
                 args.push(u32::from_le_bytes(buf));
             }
-            debug!("Got args: {:?}", &args);
+            trace!("Got args: {:?}", &args);
 
             let mut data_buf = vec![0_u8; data_size as usize];
             let n = timeout(Duration::from_secs(1), stdout.read_exact(&mut data_buf))
@@ -416,14 +435,14 @@ impl MakeMkv {
                 .context("Timeout waiting for data")?
                 .context("Unable to read data bytes from mmkv")?;
             let data = &data_buf[..n];
-            debug!("Got data: {:?}", &data);
+            trace!("Got data: {:?}", &data);
 
             match cmd {
                 MakeMkvCommand::Noop => {}
                 MakeMkvCommand::BackUpdateDrive => {
                     match DriveInfo::try_from_update(&args, data) {
                         Ok(drive) => {
-                            debug!("Drive info: {:?}", &drive);
+                            trace!("Drive info: {:?}", &drive);
                             self.drive = Some(drive);
                         }
                         Err(e) => warn!("Unable to parse DriveInfo: {}", e),
@@ -436,7 +455,7 @@ impl MakeMkv {
                     let handle = u32s_to_u64(args[1], args[0]);
                     let size = args[2];
                     self.titles = Some(TitleList::new(handle, size));
-                    debug!("Setting titles");
+                    trace!("Setting titles");
                 }
                 MakeMkvCommand::BackSetTitleInfo => {
                     if args.len() != 7 || self.titles.is_none() {
@@ -466,25 +485,31 @@ impl MakeMkv {
                         title_list.add_chapter(args[0], args[1], handle);
                     }
                 }
-                MakeMkvCommand::BackUpdateCurrentInfo => {
-                    // TODO: Handle more cases
-                    if !args.is_empty() && args[0] < 10 {
-                        self.current_info[args[0] as usize] =
-                            Some(String::from_utf8_lossy(data).to_string());
-                    }
+                MakeMkvCommand::BackUpdateCurrentInfo if !args.is_empty() && args[0] < 10 => {
+                    self.current_info[args[0] as usize] =
+                        Some(String::from_utf8_lossy(data).to_string());
                 }
+                MakeMkvCommand::BackUpdateCurrentInfo => {}
                 MakeMkvCommand::BackEnterJobMode => self.job_mode = true,
                 MakeMkvCommand::BackLeaveJobMode => self.job_mode = false,
-                MakeMkvCommand::BackUpdateCurrentBar => {
-                    if !args.is_empty() {
-                        self.current_bar = args[0];
+                MakeMkvCommand::BackUpdateCurrentBar if !args.is_empty() => {
+                    let current_progress = args[0];
+                    debug!("Current progress = {}", current_progress);
+                    self.progress.current = current_progress as f32 / u32::MAX as f32 * 100.0;
+                    if let Some(channel) = &self.progress_channel {
+                        let _ = channel.send(self.progress);
                     }
                 }
-                MakeMkvCommand::BackUpdateTotalBar => {
-                    if !args.is_empty() {
-                        self.total_bar = args[0];
+                MakeMkvCommand::BackUpdateCurrentBar => {}
+                MakeMkvCommand::BackUpdateTotalBar if !args.is_empty() => {
+                    let total_progress = args[0];
+                    debug!("Total progress = {}", total_progress);
+                    self.progress.total = total_progress as f32 / u32::MAX as f32 * 100.0;
+                    if let Some(channel) = &self.progress_channel {
+                        let _ = channel.send(self.progress);
                     }
                 }
+                MakeMkvCommand::BackUpdateTotalBar => {}
                 MakeMkvCommand::Return => {
                     return Ok(AbiResponse::new(cmd, args, data.to_vec()));
                 }

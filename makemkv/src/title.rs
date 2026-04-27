@@ -1,21 +1,13 @@
 use crate::{MakeMkv, command::ItemAttribute, error::MakeMkvError};
-use futures::FutureExt;
 use log::debug;
-use std::{future::Future, time::Duration};
+use std::time::Duration;
 
 pub trait Rippable {
     /// Returns the handle of the object
     fn handle(&self) -> u64;
 
     /// Checks if the item will be ripped
-    fn is_enabled(
-        &self,
-        makemkv: &mut MakeMkv,
-    ) -> impl Future<Output = Result<bool, MakeMkvError>> + Send {
-        makemkv
-            .get_item_state(self.handle())
-            .map(|result| result.map(|value| value & 0x01 == 1))
-    }
+    fn set_enabled(&mut self, enabled: bool);
 }
 
 #[derive(Debug, Clone)]
@@ -85,6 +77,7 @@ pub struct Title {
     pub name: Option<String>,
     pub duration: Option<Duration>,
     pub disc_size: Option<String>,
+    pub enabled: bool,
 }
 
 impl Title {
@@ -97,6 +90,7 @@ impl Title {
             name: None,
             duration: None,
             disc_size: None,
+            enabled: false,
         }
     }
 
@@ -108,19 +102,22 @@ impl Title {
 
     async fn get_data(&mut self, makemkv: &mut MakeMkv) -> Result<(), MakeMkvError> {
         self.name = makemkv
-            .get_ui_item_info(self.handle, ItemAttribute::Name)
+            .get_item_info(self.handle, ItemAttribute::Name)
             .await?;
-        debug!("Title name; {:?}", &self.name);
+        debug!("Title name: {:?}", &self.name);
 
         self.duration = parse_duration(
             makemkv
-                .get_ui_item_info(self.handle, ItemAttribute::Duration)
+                .get_item_info(self.handle, ItemAttribute::Duration)
                 .await?,
         );
-        debug!("Title duration; {:?}", &self.duration);
+        debug!("Title duration: {:?}", &self.duration);
+
+        // Get state of title
+        self.enabled = makemkv.is_enabled(self).await?;
 
         self.disc_size = makemkv
-            .get_ui_item_info(self.handle, ItemAttribute::DiskSize)
+            .get_item_info(self.handle, ItemAttribute::DiskSize)
             .await?;
 
         self.chapters.get_data(makemkv).await?;
@@ -136,6 +133,10 @@ impl Rippable for Title {
     fn handle(&self) -> u64 {
         self.handle
     }
+
+    fn set_enabled(&mut self, enable: bool) {
+        self.enabled = enable;
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +144,7 @@ pub struct Track {
     handle: u64,
     track_type: Option<String>,
     codec: Option<String>,
+    pub enabled: bool,
 }
 
 impl Track {
@@ -151,17 +153,21 @@ impl Track {
             handle,
             track_type: None,
             codec: None,
+            enabled: false,
         }
     }
 
     async fn get_data(&mut self, makemkv: &mut MakeMkv) -> Result<(), MakeMkvError> {
         self.track_type = makemkv
-            .get_ui_item_info(self.handle, ItemAttribute::Type)
+            .get_item_info(self.handle, ItemAttribute::Type)
             .await?;
 
         self.codec = makemkv
-            .get_ui_item_info(self.handle, ItemAttribute::CodecLong)
+            .get_item_info(self.handle, ItemAttribute::CodecLong)
             .await?;
+
+        // Get state of track
+        self.enabled = makemkv.is_enabled(self).await?;
 
         Ok(())
     }
@@ -170,6 +176,10 @@ impl Track {
 impl Rippable for Track {
     fn handle(&self) -> u64 {
         self.handle
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 }
 
@@ -223,12 +233,12 @@ impl Chapter {
 
     async fn get_data(&mut self, makemkv: &mut MakeMkv) -> Result<(), MakeMkvError> {
         self.name = makemkv
-            .get_ui_item_info(self.handle, ItemAttribute::Name)
+            .get_item_info(self.handle, ItemAttribute::Name)
             .await?;
 
         self.datetime = parse_duration(
             makemkv
-                .get_ui_item_info(self.handle, ItemAttribute::DateTime)
+                .get_item_info(self.handle, ItemAttribute::DateTime)
                 .await?,
         );
 

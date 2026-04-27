@@ -7,4 +7,5 @@ pub mod title;
 mod util;
 
 pub use command::MakeMkvInfo;
+pub use command::MakeMkvProgress;
 pub use mmkv::MakeMkv;

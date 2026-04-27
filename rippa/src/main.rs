@@ -11,7 +11,7 @@ mod util;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    flexi_logger::Logger::try_with_str("info")?.start()?;
+    flexi_logger::Logger::try_with_str("debug")?.start()?;
 
     if let Err(e) = start_server().await {
         eprintln!("Server error: {}", e);

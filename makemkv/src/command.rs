@@ -247,3 +247,9 @@ pub enum ItemAttribute {
     Comment = 49,
     OffsetSequenceId = 50,
 }
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct MakeMkvProgress {
+    pub current: f32,
+    pub total: f32,
+}
