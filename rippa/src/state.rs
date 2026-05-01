@@ -132,9 +132,12 @@ impl RippaState {
         // Get progress
         let rx = self
             .makemkv_rip_progress_rx
-            .as_ref()
+            .as_mut()
             .ok_or(RippaError::MakeMkvNotRunning)?;
-        self.makemkv_rip_progress = *rx.borrow();
+
+        if let Ok(true) = rx.has_changed() {
+            self.makemkv_rip_progress = *rx.borrow_and_update();
+        }
 
         // Check if rip is done
         if let Some((result, makemkv)) = makemkv_task_check(&mut self.makemkv_tasks.rip).await? {

@@ -495,8 +495,9 @@ impl MakeMkv {
                 MakeMkvCommand::BackUpdateCurrentBar if !args.is_empty() => {
                     let current_progress = args[0];
                     debug!("Current progress = {}", current_progress);
-                    self.progress.current = current_progress as f32 / u32::MAX as f32 * 100.0;
+                    self.progress.current = current_progress as f32 / u16::MAX as f32 * 100.0;
                     if let Some(channel) = &self.progress_channel {
+                        debug!("Sending: {}%", self.progress.current);
                         let _ = channel.send(self.progress);
                     }
                 }
@@ -504,8 +505,9 @@ impl MakeMkv {
                 MakeMkvCommand::BackUpdateTotalBar if !args.is_empty() => {
                     let total_progress = args[0];
                     debug!("Total progress = {}", total_progress);
-                    self.progress.total = total_progress as f32 / u32::MAX as f32 * 100.0;
+                    self.progress.total = total_progress as f32 / u16::MAX as f32 * 100.0;
                     if let Some(channel) = &self.progress_channel {
+                        debug!("Sending: {}%", self.progress.total);
                         let _ = channel.send(self.progress);
                     }
                 }
