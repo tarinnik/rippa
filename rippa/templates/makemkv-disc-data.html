@@ -13,9 +13,9 @@
     <button type="submit">Rip</button>
 </form>
 {% else if state == MakeMkvState::GettingData %}
-<p hx-post="/makemkv-disc-data-check" hx-trigger="load delay:1s" hx-target="#makemkv-disc-data">Getting disc data</p>
+<p hx-get="/makemkv/disc-data" hx-trigger="load delay:1s" hx-target="#makemkv-disc-data">Getting disc data</p>
 {% else if state == MakeMkvState::Init %}
-<button hx-post="/makemkv-disc-data" hx-target="#makemkv-disc-data">Get disc data</button>
+<button hx-post="/makemkv/disc-data" hx-target="#makemkv-disc-data">Get disc data</button>
 {% else if state == MakeMkvState::Ripping %}
 <p hx-get="/makemkv/rip" hx-target="#makemkv-rip" hx-trigger="load">Ripping...</p>
 {% endif %}
