@@ -1,0 +1,7 @@
+{% if status == MakeMkvStatus::Ripping %}
+<p hx-get="/makemkv/progress" hx-target="#makemkv-rip" hx-trigger="load delay:1s">Current progress: {{current_progress}}%
+    Total progress: {{total_progress}}%</p>
+{% else if status == MakeMkvStatus::Done %}
+<p>Done</p>
+{% else %}
+{% endif %}

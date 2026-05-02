@@ -10,5 +10,6 @@ axum = { workspace = true }
 flexi_logger = "0.31.8"
 log = { workspace = true }
 makemkv = { path = "../makemkv" }
+static-serve = "0.6.1"
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }

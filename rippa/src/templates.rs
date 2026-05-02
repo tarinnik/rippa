@@ -1,6 +1,6 @@
 use crate::{
     error::RippaError,
-    state::{MakeMkvState, RippaState},
+    state::makemkv::{MakeMkvState, MakeMkvStatus},
 };
 use askama::Template;
 use axum::response::Html;
@@ -19,15 +19,15 @@ impl<T> AxumAskama for T where T: Template {}
 pub struct IndexPage {
     pub makemkv_info: MakeMkvInfoPage,
     pub makemkv_disc_data: MakeMkvDiscDataPage,
-    pub makemkv_rip: MakeMkvRipPage,
+    pub makemkv_rip: MakeMkvProgressPage,
 }
 
 impl IndexPage {
-    pub fn new(state: &RippaState) -> Self {
+    pub fn new(state: &MakeMkvState) -> Self {
         Self {
             makemkv_info: MakeMkvInfoPage::new(state),
             makemkv_disc_data: MakeMkvDiscDataPage::new(state),
-            makemkv_rip: MakeMkvRipPage::new(state),
+            makemkv_rip: MakeMkvProgressPage::new(state),
         }
     }
 }
@@ -36,14 +36,14 @@ impl IndexPage {
 #[template(path = "makemkv-info.html")]
 pub struct MakeMkvInfoPage {
     pub info: Option<MakeMkvInfo>,
-    pub state: MakeMkvState,
+    pub status: MakeMkvStatus,
 }
 
 impl MakeMkvInfoPage {
-    pub fn new(state: &RippaState) -> Self {
+    pub fn new(state: &MakeMkvState) -> Self {
         Self {
-            info: state.makemkv_info.clone(),
-            state: state.makemkv_state,
+            info: state.info.clone(),
+            status: state.status,
         }
     }
 }
@@ -52,32 +52,32 @@ impl MakeMkvInfoPage {
 #[template(path = "makemkv-disc-data.html")]
 pub struct MakeMkvDiscDataPage {
     pub title_list: Option<TitleList>,
-    pub state: MakeMkvState,
+    pub status: MakeMkvStatus,
 }
 
 impl MakeMkvDiscDataPage {
-    pub fn new(state: &RippaState) -> Self {
+    pub fn new(state: &MakeMkvState) -> Self {
         Self {
             title_list: state.titles.clone(),
-            state: state.makemkv_state,
+            status: state.status,
         }
     }
 }
 
 #[derive(Template)]
-#[template(path = "makemkv-rip.html")]
-pub struct MakeMkvRipPage {
+#[template(path = "makemkv-progress.html")]
+pub struct MakeMkvProgressPage {
     pub current_progress: String,
     pub total_progress: String,
-    pub state: MakeMkvState,
+    pub status: MakeMkvStatus,
 }
 
-impl MakeMkvRipPage {
-    pub fn new(state: &RippaState) -> Self {
+impl MakeMkvProgressPage {
+    pub fn new(state: &MakeMkvState) -> Self {
         Self {
-            current_progress: format!("{:.2}", state.makemkv_rip_progress.current),
-            total_progress: format!("{:.2}", state.makemkv_rip_progress.total),
-            state: state.makemkv_state,
+            current_progress: format!("{:.2}", state.rip_progress.current),
+            total_progress: format!("{:.2}", state.rip_progress.total),
+            status: state.status,
         }
     }
 }

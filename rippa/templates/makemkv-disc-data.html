@@ -2,7 +2,7 @@
 <form hx-post="/makemkv/rip" hx-target="#makemkv-rip">
     {% for title in title_list.titles %}
     {% if let Some(title) = title && let Some(name) = &title.name && let Some(duration) = &title.duration %}
-    {% if state != MakeMkvState::Ripping %}
+    {% if status != MakeMkvStatus::Ripping %}
     <input type="checkbox" id="title{{loop.index0}}" name="title{{loop.index0}}">
     <label for="title{{loop.index0}}">{{name}} - {{crate::util::format_time(duration)}}</label><br>
     {% else %}
@@ -12,10 +12,8 @@
     {% endfor %}
     <button type="submit">Rip</button>
 </form>
-{% else if state == MakeMkvState::GettingData %}
-<p hx-get="/makemkv/disc-data" hx-trigger="load delay:1s" hx-target="#makemkv-disc-data">Getting disc data</p>
-{% else if state == MakeMkvState::Init %}
-<button hx-post="/makemkv/disc-data" hx-target="#makemkv-disc-data">Get disc data</button>
-{% else if state == MakeMkvState::Ripping %}
-<p hx-get="/makemkv/rip" hx-target="#makemkv-rip" hx-trigger="load">Ripping...</p>
+{% else if status == MakeMkvStatus::GettingData %}
+<p hx-get="/makemkv/disc" hx-trigger="load delay:1s" hx-target="#makemkv-disc-data">Getting disc data</p>
+{% else if status == MakeMkvStatus::Init %}
+<button hx-post="/makemkv/disc/load" hx-target="#makemkv-disc-data">Get disc data</button>
 {% endif %}
