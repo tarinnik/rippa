@@ -142,8 +142,8 @@ impl Rippable for Title {
 #[derive(Debug, Clone)]
 pub struct Track {
     handle: u64,
-    track_type: Option<String>,
-    codec: Option<String>,
+    pub track_type: Option<String>,
+    pub codec: Option<String>,
     pub enabled: bool,
 }
 

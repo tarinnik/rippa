@@ -1,7 +1,8 @@
+use crate::util::u32_const_slice;
+use log::debug;
 use std::collections::HashMap;
 
-use crate::util::u32_const_slice;
-
+#[derive(Debug)]
 pub struct LanguageData {
     table: HashMap<u32, String>,
 }
@@ -21,6 +22,7 @@ impl LanguageData {
             let start = (offset * 4) as usize;
             let end = start + find_utf16_terminator(&data[start..]).unwrap_or_default();
             let value = String::from_utf16_lossy(&u8_to_u16(&data[start..end])[..]);
+            debug!("Inserting language data: id: {}, value: {}", id, &value);
             table.insert(id, value);
         }
 
@@ -33,18 +35,22 @@ impl LanguageData {
 }
 
 fn find_utf16_terminator(data: &[u8]) -> Option<usize> {
-    for i in (0..data.len()).step_by(2) {
-        if data[i..i + 1] == [0, 0] {
-            return Some(i);
+    for i in 0..data.len() - 1 {
+        if data[i..=i + 1] == [0, 0] {
+            return Some(i + 1);
         }
     }
 
+    debug!("No utf16 terminator");
     None
 }
 
 fn u8_to_u16(data: &[u8]) -> Vec<u16> {
     let mut u16s = Vec::new();
     for i in (0..data.len()).step_by(2) {
+        if i == data.len() - 1 {
+            continue;
+        }
         u16s.push(u16::from_le_bytes([data[i], data[i + 1]]));
     }
     u16s
