@@ -90,7 +90,10 @@ impl MakeMkvTask {
             MakeMkvCommand::Rip(data) => self.rip(data).await,
         };
 
-        self.command_response_tx.send(result).await;
+        self.command_response_tx
+            .send(result)
+            .await
+            .expect("Makemkv result channel closed");
     }
 
     async fn init(&mut self) -> Result<(), RippaError> {

@@ -23,11 +23,12 @@ pub fn parse_selected_titles(body: &str) -> Option<HashMap<usize, Vec<usize>>> {
     let data = body.split('&').flat_map(|s| s.split('=').next());
 
     for item in data {
+        debug!("Item: {}", item);
         let stripped = item.strip_prefix("title")?;
         if !item.contains("track") {
             // Just the title, remainder should be the index
             let index = stripped.parse::<usize>().ok()?;
-            map.insert(index, Vec::new());
+            map.insert(index, vec![0]);
         } else {
             let track_data = stripped
                 .split("track")
@@ -36,7 +37,9 @@ pub fn parse_selected_titles(body: &str) -> Option<HashMap<usize, Vec<usize>>> {
             if track_data.len() == 2 {
                 let title = track_data[0];
                 let track = track_data[1];
-                map.get_mut(&title)?.push(track);
+                if let Some(title_list) = map.get_mut(&title) {
+                    title_list.push(track);
+                }
             } else {
                 return None;
             }
