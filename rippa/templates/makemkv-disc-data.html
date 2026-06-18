@@ -14,15 +14,17 @@
         <div id="content-title{{loop.index0}}" class="collapsible-content">
             {% for track in title.tracks %}
             {% if let Some(track) = &track %}
-            {% if loop.index0 != 0 %}
-            <input type="checkbox"
-                   id="title{{title_index}}track{{loop.index0}}"
-                   name="title{{title_index}}track{{loop.index0}}"
-                   checked>
-            {%endif %}
-            <label for="title{{title_index}}track{{loop.index0}}">Track {{loop.index}} -
-            {{track.track_type.clone().unwrap_or_else(String::new)}} -
-            {{track.codec.clone().unwrap_or_else(String::new)}} </label><br>
+            <div class="track">
+                {% if loop.index0 != 0 %}
+                <input type="checkbox"
+                    id="title{{title_index}}track{{loop.index0}}"
+                    name="title{{title_index}}track{{loop.index0}}"
+                    checked>
+                {%endif %}
+                <label for="title{{title_index}}track{{loop.index0}}">Track {{loop.index}} -
+                {{track.track_type.clone().unwrap_or_else(String::new)}} -
+                {{track.codec.clone().unwrap_or_else(String::new)}} </label><br>
+            </div>
             {% endif %}
             {% endfor %}
         </div>

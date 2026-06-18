@@ -1,3 +1,8 @@
+html {
+    background-color: #050214;
+    color: white;
+}
+
 .collapsible {}
 
 .collapsible-content {
@@ -8,6 +13,14 @@
 }
 
 .title {
-    display: inline-block
+    display: inline-block;
+    background-color: #0f162b;
+    margin-bottom: 15px;
+    margin-left: 5px;
+    padding-top: 12px;
+    width: 400px;
 }
 
+.track {
+    margin-top: 5px;
+}

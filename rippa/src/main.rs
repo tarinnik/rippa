@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
 async fn start_server() -> anyhow::Result<()> {
     let router = get_router();
 
-    let listener = TcpListener::bind("[::]:45566").await?;
+    let listener = TcpListener::bind("[::]:34543").await?;
     axum::serve(listener, router).await?;
 
     Ok(())
