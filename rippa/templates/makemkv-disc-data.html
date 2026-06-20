@@ -1,5 +1,5 @@
 {% if let Some(title_list) = self.title_list %}
-<form hx-post="/makemkv/rip" hx-target="#makemkv-rip">
+<form hx-post="/makemkv/rip" hx-target="#makemkv-rip" id="disk-data">
     {% for title in title_list.titles %}
     {% if let Some(title) = title && let Some(name) = &title.name && let Some(duration) = &title.duration %}
     {% if status != MakeMkvStatus::Ripping %}
@@ -35,8 +35,8 @@
     {% endif %}
     {% endif %}
     {% endfor %}
-    <button type="submit">Rip</button>
 </form>
+<div hx-get="/makemkv/progress" hx-trigger="load" hx-target="#makemkv-rip"></div>
 {% else if status == MakeMkvStatus::GettingData %}
 <p hx-get="/makemkv/disc" hx-trigger="load delay:1s" hx-target="#makemkv-disc-data">Getting disc data</p>
 {% else if status == MakeMkvStatus::Init %}

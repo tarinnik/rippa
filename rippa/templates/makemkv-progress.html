@@ -1,7 +1,14 @@
 {% if status == MakeMkvStatus::Ripping %}
-<p hx-get="/makemkv/progress" hx-target="#makemkv-rip" hx-trigger="load delay:1s">Current progress: {{current_progress}}%
-    Total progress: {{total_progress}}%</p>
-{% else if status == MakeMkvStatus::Done %}
-<p>Done</p>
-{% else %}
+<div hx-get="/makemkv/progress" hx-target="#makemkv-rip" hx-trigger="load delay:1s">
+    <p>Ripping... <progress max="100" value="{{total_progress}}">{{total_progress}}%</progress> {{total_progress}}%</p>
+</div>
+{% else if status == MakeMkvStatus::LoadedData || status == MakeMkvStatus::Done %}
+<div>
+    <button type="submit" form="disk-data" class="icon">
+        <img src="/assets/svg/save.svg"></img>
+    </button>
+    {% if status == MakeMkvStatus::Done %}
+    <p>Done</p>
+    {% endif %}
+</div>
 {% endif %}

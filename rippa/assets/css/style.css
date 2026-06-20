@@ -1,6 +1,12 @@
+:root {
+    --background-colour: #050214;
+    --foreground-colour: white;
+    --card-colour: #e7d48a42;
+}
+
 html {
-    background-color: #050214;
-    color: white;
+    background-color: var(--background-colour);
+    color: var(--foreground-colour);
 }
 
 .content {
@@ -33,6 +39,14 @@ html {
     }
 }
 
+#makemkv-rip {
+    background-color: var(--background-colour);
+    position: sticky;
+    top: 0;
+    margin: 0px 10px;
+    display: flex;
+}
+
 .collapsible-content {
     padding-left: 15px;
     max-height: 0;
@@ -41,7 +55,7 @@ html {
 }
 
 .title {
-    background-color: #e7d48a42;
+    background-color: var(--card-colour);
     margin: 0px 10px;
     padding-top: 17px;
     max-width: 400px;
@@ -68,5 +82,15 @@ html {
     border-top: 2px solid #00000077;
     margin: 10px 10px 0px 10px;
     padding-top: 10px;
-    padding-left: 16px;
+    padding-left: 17px;
+}
+
+.icon {
+    background-color: var(--background-colour);
+    border-width: 0;
+    margin-top: 4px;
+}
+
+progress {
+    margin: 0px 5px;
 }
