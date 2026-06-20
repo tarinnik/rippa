@@ -1,5 +1,5 @@
 html {
-    background-color: #e7d48a42;
+    background-color: #050214;
     color: white;
 }
 
@@ -34,7 +34,7 @@ html {
 }
 
 .collapsible-content {
-    padding-left: 10px;
+    padding-left: 15px;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.2s ease-out;
@@ -42,7 +42,7 @@ html {
 
 .title {
     /*display: block;*/
-    background-color: #0f162b;
+    background-color: #e7d48a42;
     /*margin-bottom: 15px;*/
     margin-left: 10px;
     padding-top: 17px;
@@ -64,4 +64,11 @@ html {
 
 .track {
     margin-top: 5px;
+}
+
+.video-track {
+    border-top: 2px solid #00000077;
+    margin: 10px 10px 0px 10px;
+    padding-top: 10px;
+    padding-left: 16px;
 }

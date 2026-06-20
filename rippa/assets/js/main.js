@@ -11,6 +11,6 @@ function toggleHiddenContent(id, contentId) {
     if (content.style.maxHeight) {
         content.style.maxHeight = null;
     } else {
-        content.style.maxHeight = content.scrollHeight + "px";
+        content.style.maxHeight = content.scrollHeight + 10 + "px";
     }
 }

@@ -14,7 +14,7 @@
         <div id="content-title{{loop.index0}}" class="collapsible-content">
             {% for track in title.tracks %}
             {% if let Some(track) = &track %}
-            <div class="track">
+            <div class="track {% if loop.index0 == 0 %} video-track {% endif %}">
                 {% if loop.index0 != 0 %}
                 <input type="checkbox" id="title{{title_index}}track{{loop.index0}}"
                     name="title{{title_index}}track{{loop.index0}}" checked>
