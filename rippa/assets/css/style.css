@@ -1,9 +1,37 @@
 html {
-    background-color: #050214;
+    background-color: #e7d48a42;
     color: white;
 }
 
-.collapsible {}
+.content {
+    display: flex;
+    flex-flow: row wrap;
+}
+
+.content>* {
+    padding: 10px;
+    flex: 1 100%;
+}
+
+@media all and (min-width: 600px) {
+    #makemkv-info {
+        flex: 1 0 0;
+    }
+}
+
+@media all and (min-width: 800px) {
+    #makemkv-disc-data {
+        flex: 3 0px;
+    }
+
+    #makemkv-disc-data {
+        order: 1;
+    }
+
+    #makemkv-info {
+        order: 2;
+    }
+}
 
 .collapsible-content {
     padding-left: 10px;
@@ -13,12 +41,25 @@ html {
 }
 
 .title {
-    display: inline-block;
+    /*display: block;*/
     background-color: #0f162b;
-    margin-bottom: 15px;
-    margin-left: 5px;
-    padding-top: 12px;
+    /*margin-bottom: 15px;*/
+    margin-left: 10px;
+    padding-top: 17px;
     width: 400px;
+    border-radius: 10px;
+}
+
+.title label {
+    margin-left: 10px;
+}
+
+.title input {
+    margin-left: 6px;
+}
+
+.title-container {
+    display: flex;
 }
 
 .track {

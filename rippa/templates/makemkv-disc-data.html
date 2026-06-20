@@ -4,26 +4,24 @@
     {% if let Some(title) = title && let Some(name) = &title.name && let Some(duration) = &title.duration %}
     {% if status != MakeMkvStatus::Ripping %}
     <div class="title">
-        <img id="expand-title{{loop.index0}}" src="/assets/svg/chevron-right.svg" class="collapsible"
-            onclick="toggleHiddenContent('expand-title{{loop.index0}}', 'content-title{{loop.index0}}')"></img>
-        <input type="checkbox" id="title{{loop.index0}}" name="title{{loop.index0}}">
-        <label for="title{{loop.index0}}">{{name}} - {{crate::util::format_time(duration)}}</label>
-        <br>
-
+        <div class="title-container">
+            <img id="expand-title{{loop.index0}}" src="/assets/svg/chevron-right.svg" class="collapsible"
+                onclick="toggleHiddenContent('expand-title{{loop.index0}}', 'content-title{{loop.index0}}')"></img>
+            <input type="checkbox" id="title{{loop.index0}}" name="title{{loop.index0}}">
+            <label for="title{{loop.index0}}">{{name}} - {{crate::util::format_time(duration)}}</label>
+        </div>
         {% let title_index = loop.index0 %}
         <div id="content-title{{loop.index0}}" class="collapsible-content">
             {% for track in title.tracks %}
             {% if let Some(track) = &track %}
             <div class="track">
                 {% if loop.index0 != 0 %}
-                <input type="checkbox"
-                    id="title{{title_index}}track{{loop.index0}}"
-                    name="title{{title_index}}track{{loop.index0}}"
-                    checked>
+                <input type="checkbox" id="title{{title_index}}track{{loop.index0}}"
+                    name="title{{title_index}}track{{loop.index0}}" checked>
                 {%endif %}
                 <label for="title{{title_index}}track{{loop.index0}}">Track {{loop.index}} -
-                {{track.track_type.clone().unwrap_or_else(String::new)}} -
-                {{track.codec.clone().unwrap_or_else(String::new)}} </label><br>
+                    {{track.track_type.clone().unwrap_or_else(String::new)}} -
+                    {{track.codec.clone().unwrap_or_else(String::new)}} </label><br>
             </div>
             {% endif %}
             {% endfor %}
