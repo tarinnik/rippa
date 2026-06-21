@@ -1,4 +1,5 @@
 use crate::{
+    VERSION,
     error::RippaError,
     state::makemkv::{MakeMkvState, MakeMkvStatus},
 };
@@ -37,6 +38,7 @@ impl IndexPage {
 pub struct MakeMkvInfoPage {
     pub info: Option<MakeMkvInfo>,
     pub status: MakeMkvStatus,
+    pub version: String,
 }
 
 impl MakeMkvInfoPage {
@@ -44,6 +46,7 @@ impl MakeMkvInfoPage {
         Self {
             info: state.info.clone(),
             status: state.status,
+            version: VERSION.into(),
         }
     }
 }

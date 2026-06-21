@@ -1,13 +1,15 @@
 #![forbid(clippy::unwrap_used)]
 
-use crate::routes::get_router;
-use tokio::net::TcpListener;
-
 mod error;
 mod routes;
 mod state;
 mod templates;
 mod util;
+
+use crate::routes::get_router;
+use tokio::net::TcpListener;
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
