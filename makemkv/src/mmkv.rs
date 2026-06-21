@@ -179,6 +179,68 @@ impl MakeMkv {
             version,
             platform,
             interface_language,
+            key_type: self.get_app_string(AppString::KeyType, None, None).await?,
+            key_features: self
+                .get_app_string(AppString::KeyFeatures, None, None)
+                .await?,
+            key_expiration: self
+                .get_app_string(AppString::KeyExpiration, None, None)
+                .await?,
+            eval_state: self
+                .get_app_string(AppString::EvalState, None, None)
+                .await?,
+            prog_expiration: self
+                .get_app_string(AppString::ProgExpiration, None, None)
+                .await?,
+            latest_version: self
+                .get_app_string(AppString::LatestVersion, None, None)
+                .await?,
+            restart_required: self
+                .get_app_string(AppString::RestartRequired, None, None)
+                .await?,
+            expert_mode: self
+                .get_app_string(AppString::ExpertMode, None, None)
+                .await?,
+            profile_count: self
+                .get_app_string(AppString::ProfileCount, None, None)
+                .await?,
+            prog_expired: self
+                .get_app_string(AppString::ProgExpired, None, None)
+                .await?,
+            // output_folder_name: self
+            //     .get_app_string(AppString::OutputFolderName, None, None)
+            //     .await?,
+            // output_base_name: self
+            //     .get_app_string(AppString::OutputBaseName, None, None)
+            //     .await?,
+            current_profile: self
+                .get_app_string(AppString::CurrentProfile, None, None)
+                .await?,
+            open_file_filter: self
+                .get_app_string(AppString::OpenFileFilter, None, None)
+                .await?,
+            website_url: self
+                .get_app_string(AppString::WebsiteURL, None, None)
+                .await?,
+            open_dvd_file_filter: self
+                .get_app_string(AppString::OpenDVDFileFilter, None, None)
+                .await?,
+            default_selection_string: self
+                .get_app_string(AppString::DefaultSelectionString, None, None)
+                .await?,
+            default_output_file_name: self
+                .get_app_string(AppString::DefaultOutputFileName, None, None)
+                .await?,
+            external_app_item: self
+                .get_app_string(AppString::ExternalAppItem, None, None)
+                .await?,
+            profile_string: self
+                .get_app_string(AppString::ProfileString, None, None)
+                .await?,
+            key_string: self
+                .get_app_string(AppString::KeyString, None, None)
+                .await?,
+            build: self.get_app_string(AppString::Build, None, None).await?,
         })
     }
 
@@ -210,9 +272,12 @@ impl MakeMkv {
             .transact(MakeMkvCommand::CallAppGetString, Some(args), None)
             .await?;
 
-        let data = String::from_utf8_lossy(&response.data[..response.data.len() - 1]);
-
-        Ok(data.to_string())
+        if !response.data.is_empty() {
+            let data = String::from_utf8_lossy(&response.data[..response.data.len() - 1]);
+            Ok(data.to_string())
+        } else {
+            Ok(String::new())
+        }
     }
 
     async fn open_disk(&mut self, index: u32, flags: Option<u32>) -> Result<(), MakeMkvError> {

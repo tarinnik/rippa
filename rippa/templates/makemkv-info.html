@@ -1,10 +1,8 @@
 {% if let Some(info) = info %}
-<ul hx-get="/makemkv/disc" hx-trigger="load" hx-target="#makemkv-disc-data">
-    <li>Name: {{info.name}}</li>
-    <li>Version: {{info.version}}</li>
-    <li>Platform: {{info.platform}}</li>
-    <li>Language: {{info.interface_language}}</li>
-</ul>
+<div hx-get="/makemkv/disc" hx-trigger="load" hx-target="#makemkv-disc-data">
+    <p>{{info.name}} {{info.version}}</p>
+    <p>Key Expiration: {{info.key_expiration}}</p>
+</div>
 {% else if status == MakeMkvStatus::Initialising %}
 <p hx-get="/makemkv" hx-trigger="load delay:1s" hx-target="#makemkv-info">Starting MakeMKV</p>
 {% else %}
