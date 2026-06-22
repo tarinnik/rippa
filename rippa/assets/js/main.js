@@ -10,7 +10,9 @@ function toggleHiddenContent(id, contentId) {
     self.classList.toggle("active");
     if (content.style.maxHeight) {
         content.style.maxHeight = null;
+        self.setAttribute("src", "/assets/svg/chevron-right.svg");
     } else {
         content.style.maxHeight = content.scrollHeight + 10 + "px";
+        self.setAttribute("src", "/assets/svg/chevron-down.svg");
     }
 }

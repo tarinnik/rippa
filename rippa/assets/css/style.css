@@ -94,3 +94,16 @@ html {
 progress {
     margin: 0px 5px;
 }
+
+.centre-horizontally {
+    display: flex;
+    justify-content: center;
+}
+
+.inline {
+    display: flex;
+}
+
+#rip-done {
+    margin-left: 5px;
+}

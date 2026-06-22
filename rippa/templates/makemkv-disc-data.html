@@ -2,12 +2,13 @@
 <form hx-post="/makemkv/rip" hx-target="#makemkv-rip" id="disk-data">
     {% for title in title_list.titles %}
     {% if let Some(title) = title && let Some(name) = &title.name && let Some(duration) = &title.duration %}
-    {% if status != MakeMkvStatus::Ripping %}
-    <div class="title">
+    <div class="title" onclick="toggleHiddenContent('expand-title{{loop.index0}}', 'content-title{{loop.index0}}')">
         <div class="title-container">
             <img id="expand-title{{loop.index0}}" src="/assets/svg/chevron-right.svg" class="collapsible"
                 onclick="toggleHiddenContent('expand-title{{loop.index0}}', 'content-title{{loop.index0}}')"></img>
+            {% if status != MakeMkvStatus::Ripping %}
             <input type="checkbox" id="title{{loop.index0}}" name="title{{loop.index0}}">
+            {% endif %}
             <label for="title{{loop.index0}}">{{name}} - {{crate::util::format_time(duration)}}</label>
         </div>
         {% let title_index = loop.index0 %}
@@ -29,10 +30,6 @@
         <br>
     </div>
     <br>
-    {% else %}
-    <p>{{name}} - {{crate::util::format_time(duration)}}</p>
-    <br>
-    {% endif %}
     {% endif %}
     {% endfor %}
 </form>

@@ -3,12 +3,12 @@
     <p>Ripping... <progress max="100" value="{{total_progress}}">{{total_progress}}%</progress> {{total_progress}}%</p>
 </div>
 {% else if status == MakeMkvStatus::LoadedData || status == MakeMkvStatus::Done %}
-<div>
+<div class="inline">
     <button type="submit" form="disk-data" class="icon">
         <img src="/assets/svg/save.svg"></img>
     </button>
     {% if status == MakeMkvStatus::Done %}
-    <p>Done</p>
+    <p id="rip-done">Done</p>
     {% endif %}
 </div>
 {% endif %}
